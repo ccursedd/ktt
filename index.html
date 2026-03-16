@@ -4,775 +4,440 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KittyBin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root {
-    --bg: #080b0f;
-    --bg2: #0d1117;
-    --bg3: #111820;
-    --border: #1e2d3d;
-    --border2: #243447;
-    --accent: #00ffe0;
-    --accent2: #ff2e6c;
-    --accent3: #7b61ff;
-    --text: #c9d8e8;
-    --text2: #6b8299;
-    --text3: #3d5268;
-    --green: #00ff88;
-    --red: #ff2e6c;
-    --mono: 'Share Tech Mono', monospace;
-    --sans: 'Rajdhani', sans-serif;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--mono);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* Scanline overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.08) 2px,
-      rgba(0,0,0,0.08) 4px
-    );
-    pointer-events: none;
-    z-index: 9999;
-  }
-
-  /* Grid background */
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(0,255,224,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,255,224,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* ---- NAVBAR ---- */
-  nav {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(8,11,15,0.95);
-    border-bottom: 1px solid var(--border);
-    backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 2rem;
-    height: 52px;
-  }
-
-  .nav-logo {
-    font-family: var(--sans);
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--accent);
-    text-decoration: none;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    text-shadow: 0 0 20px rgba(0,255,224,0.5);
-    cursor: pointer;
-  }
-  .nav-logo span { color: var(--accent2); }
-
-  .nav-links {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-  }
-
-  .nav-links a, .nav-links button {
-    background: none;
-    border: none;
-    color: var(--text2);
-    font-family: var(--mono);
-    font-size: 0.75rem;
-    padding: 6px 14px;
-    cursor: pointer;
-    text-decoration: none;
-    transition: color 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  .nav-links a:hover, .nav-links button:hover { color: var(--accent); }
-
-  .nav-btn {
-    background: transparent !important;
-    border: 1px solid var(--accent) !important;
-    color: var(--accent) !important;
-    border-radius: 2px;
-    padding: 5px 14px !important;
-  }
-  .nav-btn:hover { background: rgba(0,255,224,0.08) !important; }
-
-  .nav-btn-danger {
-    border-color: var(--accent2) !important;
-    color: var(--accent2) !important;
-  }
-  .nav-btn-danger:hover { background: rgba(255,46,108,0.08) !important; }
-
-  /* ---- PAGE WRAPPER ---- */
-  #app {
-    position: relative;
-    z-index: 1;
-  }
-
-  /* ---- VIEWS ---- */
-  .view { display: none; }
-  .view.active { display: block; }
-
-  /* ---- HOME / FEED ---- */
-  .home-layout {
-    display: grid;
-    grid-template-columns: 220px 1fr 200px;
-    gap: 0;
-    min-height: calc(100vh - 52px);
-  }
-
-  /* Left sidebar */
-  .sidebar-left {
-    border-right: 1px solid var(--border);
-    padding: 1.5rem 1rem;
-  }
-
-  .sidebar-section {
-    margin-bottom: 2rem;
-  }
-
-  .sidebar-title {
-    font-size: 0.65rem;
-    color: var(--text3);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 0.8rem;
-    padding-bottom: 0.4rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .sidebar-link {
-    display: block;
-    padding: 5px 8px;
-    color: var(--text2);
-    text-decoration: none;
-    font-size: 0.75rem;
-    border-radius: 2px;
-    transition: all 0.15s;
-    cursor: pointer;
-  }
-  .sidebar-link:hover { color: var(--accent); background: rgba(0,255,224,0.05); }
-  .sidebar-link.active { color: var(--accent); }
-
-  /* Main feed */
-  .main-feed {
-    border-right: 1px solid var(--border);
-    padding: 1.5rem;
-  }
-
-  .feed-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1.2rem;
-    padding-bottom: 0.8rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .feed-title {
-    font-family: var(--sans);
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text2);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
-
-  /* Paste card */
-  .paste-card {
-    border: 1px solid var(--border);
-    background: var(--bg2);
-    margin-bottom: 1px;
-    padding: 0.7rem 1rem;
-    cursor: pointer;
-    transition: all 0.15s;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0.5rem;
-    align-items: center;
-  }
-  .paste-card:hover {
-    border-color: var(--border2);
-    background: var(--bg3);
-  }
-
-  .paste-card-title {
-    font-size: 0.8rem;
-    color: var(--accent);
-    text-decoration: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .paste-card-title:hover { text-decoration: underline; }
-
-  .paste-card-meta {
-    font-size: 0.65rem;
-    color: var(--text3);
-    margin-top: 2px;
-  }
-
-  .paste-card-meta a {
-    color: var(--text2);
-    text-decoration: none;
-  }
-  .paste-card-meta a:hover { color: var(--accent); }
-
-  .paste-card-right {
-    text-align: right;
-    font-size: 0.65rem;
-    color: var(--text3);
-    white-space: nowrap;
-  }
-
-  .paste-tag {
-    display: inline-block;
-    padding: 1px 6px;
-    font-size: 0.6rem;
-    border-radius: 2px;
-    margin-right: 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .tag-public { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.2); }
-  .tag-private { background: rgba(255,46,108,0.1); color: var(--accent2); border: 1px solid rgba(255,46,108,0.2); }
-  .tag-unlisted { background: rgba(123,97,255,0.1); color: var(--accent3); border: 1px solid rgba(123,97,255,0.2); }
-
-  /* Right sidebar */
-  .sidebar-right {
-    padding: 1.5rem 1rem;
-  }
-
-  .stats-box {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 0.8rem;
-    margin-bottom: 1rem;
-  }
-
-  .stat-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.7rem;
-    padding: 3px 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .stat-row:last-child { border-bottom: none; }
-  .stat-label { color: var(--text3); }
-  .stat-value { color: var(--accent); }
-
-  /* ---- PASTE VIEW ---- */
-  .paste-view {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem 1.5rem;
-  }
-
-  .paste-header {
-    border: 1px solid var(--border);
-    background: var(--bg2);
-    padding: 1rem 1.2rem;
-    margin-bottom: 1px;
-  }
-
-  .paste-h-title {
-    font-family: var(--sans);
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 0.4rem;
-  }
-
-  .paste-h-meta {
-    font-size: 0.7rem;
-    color: var(--text3);
-    display: flex;
-    gap: 1.2rem;
-    flex-wrap: wrap;
-  }
-
-  .paste-h-meta a { color: var(--accent); text-decoration: none; }
-  .paste-h-meta a:hover { text-decoration: underline; }
-
-  .paste-toolbar {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-top: none;
-    padding: 0.4rem 1rem;
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .tb-btn {
-    background: none;
-    border: 1px solid var(--border2);
-    color: var(--text2);
-    font-family: var(--mono);
-    font-size: 0.65rem;
-    padding: 3px 10px;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    transition: all 0.15s;
-  }
-  .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .tb-btn.danger:hover { border-color: var(--accent2); color: var(--accent2); }
-
-  .paste-content-box {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-top: none;
-    overflow-x: auto;
-  }
-
-  .paste-content-box pre {
-    padding: 1.2rem;
-    font-size: 0.78rem;
-    line-height: 1.7;
-    color: var(--text);
-    white-space: pre-wrap;
-    word-break: break-word;
-    counter-reset: line;
-  }
-
-  .paste-line {
-    display: block;
-    position: relative;
-    padding-left: 3.5rem;
-  }
-  .paste-line::before {
-    counter-increment: line;
-    content: counter(line);
-    position: absolute;
-    left: 0;
-    width: 3rem;
-    text-align: right;
-    color: var(--text3);
-    font-size: 0.7rem;
-    user-select: none;
-    border-right: 1px solid var(--border);
-    padding-right: 0.5rem;
-  }
-
-  /* ---- CREATE PASTE ---- */
-  .create-layout {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem 1.5rem;
-  }
-
-  .create-title {
-    font-family: var(--sans);
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text2);
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    margin-bottom: 1.2rem;
-    padding-bottom: 0.6rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .form-row {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 0.8rem;
-    flex-wrap: wrap;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    flex: 1;
-    min-width: 180px;
-  }
-
-  .form-label {
-    font-size: 0.65rem;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  .form-input, .form-select, .form-textarea {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 0.78rem;
-    padding: 0.5rem 0.7rem;
-    outline: none;
-    transition: border-color 0.2s;
-    border-radius: 0;
-    width: 100%;
-  }
-  .form-input:focus, .form-select:focus, .form-textarea:focus {
-    border-color: var(--accent);
-  }
-  .form-select option { background: var(--bg); }
-
-  .form-textarea {
-    resize: vertical;
-    min-height: 340px;
-    line-height: 1.6;
-  }
-
-  .btn-primary {
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    font-family: var(--mono);
-    font-size: 0.75rem;
-    padding: 8px 24px;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    transition: all 0.2s;
-  }
-  .btn-primary:hover {
-    background: rgba(0,255,224,0.1);
-    box-shadow: 0 0 15px rgba(0,255,224,0.15);
-  }
-
-  .btn-secondary {
-    background: transparent;
-    border: 1px solid var(--border2);
-    color: var(--text2);
-    font-family: var(--mono);
-    font-size: 0.75rem;
-    padding: 8px 24px;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    transition: all 0.2s;
-  }
-  .btn-secondary:hover { border-color: var(--text2); color: var(--text); }
-
-  /* ---- AUTH MODAL ---- */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.8);
-    z-index: 200;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(4px);
-  }
-  .modal-overlay.hidden { display: none; }
-
-  .modal {
-    background: var(--bg2);
-    border: 1px solid var(--border2);
-    width: 380px;
-    max-width: 95vw;
-    padding: 2rem;
-    position: relative;
-  }
-
-  .modal-close {
-    position: absolute;
-    top: 0.8rem;
-    right: 0.8rem;
-    background: none;
-    border: none;
-    color: var(--text3);
-    font-size: 1.1rem;
-    cursor: pointer;
-  }
-  .modal-close:hover { color: var(--accent2); }
-
-  .modal-title {
-    font-family: var(--sans);
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.6rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .modal-tabs {
-    display: flex;
-    margin-bottom: 1.2rem;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .modal-tab {
-    background: none;
-    border: none;
-    color: var(--text3);
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    padding: 6px 16px;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-bottom: 2px solid transparent;
-    transition: all 0.15s;
-  }
-  .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  .auth-error {
-    background: rgba(255,46,108,0.1);
-    border: 1px solid rgba(255,46,108,0.3);
-    color: var(--accent2);
-    font-size: 0.7rem;
-    padding: 0.5rem 0.8rem;
-    margin-bottom: 0.8rem;
-    display: none;
-  }
-  .auth-error.show { display: block; }
-
-  .auth-success {
-    background: rgba(0,255,136,0.1);
-    border: 1px solid rgba(0,255,136,0.3);
-    color: var(--green);
-    font-size: 0.7rem;
-    padding: 0.5rem 0.8rem;
-    margin-bottom: 0.8rem;
-    display: none;
-  }
-  .auth-success.show { display: block; }
-
-  /* ---- USER PROFILE ---- */
-  .profile-layout {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem 1.5rem;
-  }
-
-  .profile-header {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 1.5rem;
-    margin-bottom: 1px;
-    display: flex;
-    align-items: flex-start;
-    gap: 1.5rem;
-  }
-
-  .profile-avatar {
-    width: 64px;
-    height: 64px;
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: var(--accent);
-    flex-shrink: 0;
-    font-family: var(--sans);
-    font-weight: 700;
-  }
-
-  .profile-info h2 {
-    font-family: var(--sans);
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 0.3rem;
-  }
-
-  .profile-info .profile-handle {
-    font-size: 0.75rem;
-    color: var(--accent);
-    margin-bottom: 0.5rem;
-  }
-
-  .profile-stats {
-    display: flex;
-    gap: 2rem;
-    margin-top: 0.5rem;
-  }
-
-  .profile-stat {
-    font-size: 0.7rem;
-    color: var(--text3);
-  }
-  .profile-stat span { color: var(--text); display: block; font-size: 0.9rem; font-weight: 600; }
-
-  /* ---- TOAST ---- */
-  #toast {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    background: var(--bg2);
-    border: 1px solid var(--border2);
-    color: var(--text);
-    font-size: 0.75rem;
-    padding: 0.7rem 1.2rem;
-    z-index: 9998;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.25s;
-    pointer-events: none;
-  }
-  #toast.show { opacity: 1; transform: translateY(0); }
-  #toast.success { border-color: var(--green); color: var(--green); }
-  #toast.error { border-color: var(--accent2); color: var(--accent2); }
-
-  /* ---- EMPTY STATE ---- */
-  .empty-state {
-    padding: 3rem 1rem;
-    text-align: center;
-    color: var(--text3);
-    font-size: 0.75rem;
-  }
-  .empty-state .empty-icon { font-size: 2rem; margin-bottom: 0.8rem; opacity: 0.4; }
-
-  /* ---- LOADING ---- */
-  .loading {
-    padding: 2rem;
-    text-align: center;
-    color: var(--text3);
-    font-size: 0.75rem;
-  }
-  .loading::after {
-    content: '';
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 1px solid var(--border2);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    margin-left: 8px;
-    vertical-align: middle;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ---- URL BAR ---- */
-  .url-bar {
-    background: var(--bg3);
-    border-bottom: 1px solid var(--border);
-    padding: 4px 2rem;
-    font-size: 0.65rem;
-    color: var(--text3);
-    font-family: var(--mono);
-  }
-  .url-bar span { color: var(--accent); }
-
-  /* ---- SCROLLBAR ---- */
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border2); }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
-
-  /* ---- RESPONSIVE ---- */
-  @media (max-width: 768px) {
-    .home-layout { grid-template-columns: 1fr; }
-    .sidebar-left, .sidebar-right { display: none; }
-  }
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f0f0f;
+  --bg2:#161616;
+  --bg3:#1c1c1c;
+  --bg4:#222;
+  --border:#2a2a2a;
+  --border2:#333;
+  --accent:#d4a843;
+  --accent-h:#e0b855;
+  --text:#c8c8c8;
+  --text2:#888;
+  --text3:#555;
+  --red:#cc4444;
+  --green:#4a9;
+  --blue:#4a8fc4;
+  --f:'Verdana',Geneva,sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--f);font-size:13px;min-height:100vh}
+a{color:var(--accent);text-decoration:none;cursor:pointer}
+a:hover{text-decoration:underline;color:var(--accent-h)}
+input,select,textarea{
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text);font-family:var(--f);font-size:12px;
+  padding:5px 8px;outline:none;border-radius:0;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+select option{background:var(--bg2)}
+button{cursor:pointer;font-family:var(--f);font-size:12px;border-radius:0}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#333}
+::-webkit-scrollbar-thumb:hover{background:#444}
+
+/* ---- TOPBAR ---- */
+#topbar{
+  background:var(--bg2);border-bottom:2px solid #1a1a1a;
+  display:flex;align-items:center;padding:0 14px;
+  height:36px;position:sticky;top:0;z-index:300;
+  box-shadow:0 1px 0 var(--border);
+}
+#logo{
+  font-size:15px;font-weight:bold;color:var(--accent);
+  cursor:pointer;margin-right:18px;letter-spacing:.5px;
+}
+#logo span{color:var(--text3)}
+.tnav{display:flex;align-items:center;gap:0;flex:1}
+.tnav a,.tnav-btn{
+  background:none;border:none;color:var(--text2);
+  font-size:12px;padding:0 10px;cursor:pointer;
+  line-height:36px;display:inline-block;
+  transition:color .12s;font-family:var(--f);
+  white-space:nowrap;
+}
+.tnav a:hover,.tnav-btn:hover{color:var(--text);text-decoration:none;background:rgba(255,255,255,.03)}
+.tnav-right{display:flex;align-items:center;gap:5px;margin-left:auto}
+.btn{
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text2);padding:3px 11px;font-size:11px;
+  transition:all .12s;white-space:nowrap;
+}
+.btn:hover{border-color:var(--text2);color:var(--text)}
+.btn-gold{background:var(--accent);border:1px solid var(--accent);color:#000;font-weight:bold;padding:3px 11px;font-size:11px}
+.btn-gold:hover{background:var(--accent-h);border-color:var(--accent-h)}
+.btn-danger{color:var(--text3);border-color:var(--border)}
+.btn-danger:hover{border-color:var(--red);color:var(--red)}
+
+/* ---- LAYOUT ---- */
+#wrap{display:flex;min-height:calc(100vh - 36px)}
+#sidebar{
+  width:170px;flex-shrink:0;
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  padding:10px 0;
+}
+#content{flex:1;min-width:0;padding:14px 16px}
+#aside{
+  width:190px;flex-shrink:0;
+  border-left:1px solid var(--border);
+  padding:12px;background:var(--bg2);
+}
+
+/* Sidebar */
+.sb-sec{margin-bottom:14px}
+.sb-hd{
+  font-size:10px;color:var(--text3);
+  text-transform:uppercase;letter-spacing:1.5px;
+  padding:3px 12px 5px;margin-bottom:2px;
+}
+.sb-a{
+  display:block;padding:5px 12px;
+  color:var(--text2);font-size:12px;cursor:pointer;
+  border-left:2px solid transparent;
+  transition:all .1s;
+}
+.sb-a:hover{color:var(--text);background:rgba(255,255,255,.03);text-decoration:none}
+.sb-a.on{color:var(--accent);border-left-color:var(--accent);background:rgba(212,168,67,.05)}
+
+/* ---- VIEWS ---- */
+.view{display:none}.view.active{display:block}
+
+/* ---- PAGE TITLE ---- */
+.pg-title{
+  font-size:12px;color:var(--text3);
+  padding:6px 0 10px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:12px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.pg-title strong{color:var(--text);font-size:13px}
+
+/* ---- PASTE TABLE ---- */
+.pt-head{
+  display:grid;
+  grid-template-columns:minmax(0,3fr) 120px 80px 80px 120px;
+  background:var(--bg3);border:1px solid var(--border);
+  padding:5px 8px;font-size:10px;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.pt-row{
+  display:grid;
+  grid-template-columns:minmax(0,3fr) 120px 80px 80px 120px;
+  border:1px solid var(--border);border-top:none;
+  padding:6px 8px;font-size:12px;cursor:pointer;
+  transition:background .08s;align-items:center;
+  background:var(--bg2);
+}
+.pt-row:hover{background:var(--bg3)}
+.pt-row .pt-title{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--text);font-size:12px;
+}
+.pt-row .pt-title:hover{color:var(--accent);text-decoration:underline}
+.pt-row .pt-author a{color:var(--accent);font-size:11px}
+.pt-row .pt-date{color:var(--text3);font-size:11px}
+.vis{
+  font-size:10px;padding:1px 5px;border-radius:2px;
+  display:inline-block;letter-spacing:.3px;
+}
+.vis-public{background:rgba(68,170,100,.12);color:#4a9;border:1px solid rgba(68,170,100,.25)}
+.vis-private{background:rgba(204,68,68,.12);color:#c66;border:1px solid rgba(204,68,68,.25)}
+.vis-unlisted{background:rgba(74,143,196,.12);color:var(--blue);border:1px solid rgba(74,143,196,.25)}
+
+/* ---- PASTE VIEW ---- */
+.pv-box{border:1px solid var(--border);background:var(--bg2)}
+.pv-head{
+  background:var(--bg3);border-bottom:1px solid var(--border);
+  padding:9px 12px;
+}
+.pv-head-title{font-size:14px;color:var(--text);font-weight:bold;margin-bottom:4px}
+.pv-head-meta{font-size:11px;color:var(--text3)}
+.pv-head-meta a{color:var(--accent);font-size:11px}
+.pv-toolbar{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:5px 10px;display:flex;gap:5px;align-items:center;
+}
+.pv-content pre{
+  font-family:'Courier New',monospace;font-size:12px;
+  line-height:1.65;color:var(--text);
+  padding:10px 0;counter-reset:ln;overflow-x:auto;
+}
+.ln{display:block;position:relative;padding-left:0}
+.ln::before{
+  counter-increment:ln;content:counter(ln);
+  display:inline-block;min-width:44px;text-align:right;
+  color:var(--text3);font-size:11px;
+  border-right:1px solid var(--border);
+  margin-right:14px;padding-right:8px;
+  user-select:none;
+}
+.ln:hover{background:rgba(255,255,255,.025)}
+
+/* ---- CREATE ---- */
+.cr-wrap{max-width:880px}
+.field-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.field input,.field select,.field textarea{width:100%}
+.field-grow{flex:1;min-width:150px}
+.cr-editor{
+  width:100%;min-height:400px;
+  font-family:'Courier New',monospace;font-size:12px;
+  line-height:1.6;resize:vertical;padding:10px;
+}
+.sub-row{display:flex;gap:8px;margin-top:12px;align-items:center}
+.err{color:var(--red);font-size:11px}
+
+/* ---- ASIDE ---- */
+.aside-hd{
+  font-size:10px;color:var(--text3);
+  text-transform:uppercase;letter-spacing:1px;
+  margin-bottom:8px;padding-bottom:5px;
+  border-bottom:1px solid var(--border);
+}
+.stats-box{background:var(--bg3);border:1px solid var(--border);margin-bottom:12px}
+.stat-r{
+  display:flex;justify-content:space-between;
+  padding:5px 9px;border-bottom:1px solid var(--border);
+  font-size:11px;
+}
+.stat-r:last-child{border-bottom:none}
+.stat-r .k{color:var(--text3)}
+.stat-r .v{color:var(--text);font-weight:bold}
+.member-row{
+  padding:4px 0;border-bottom:1px solid var(--border);
+  font-size:11px;display:flex;align-items:center;gap:6px;
+}
+.member-mini-pfp{
+  width:20px;height:20px;flex-shrink:0;
+  background:var(--bg3);border:1px solid var(--border);
+  overflow:hidden;display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:var(--text3);
+}
+.member-mini-pfp img{width:100%;height:100%;object-fit:cover}
+
+/* ---- PROFILE ---- */
+.prof-banner{
+  width:100%;height:150px;
+  background:linear-gradient(135deg,#1a1a1a 0%,#222 100%);
+  border:1px solid var(--border);border-bottom:none;
+  position:relative;overflow:hidden;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.prof-banner img{width:100%;height:100%;object-fit:cover;display:none}
+.banner-overlay{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.5);
+  display:none;align-items:center;justify-content:center;
+  font-size:11px;color:var(--accent);letter-spacing:.5px;
+  text-transform:uppercase;
+}
+.prof-banner.editable:hover .banner-overlay{display:flex}
+.prof-banner.no-banner{color:var(--text3);font-size:11px}
+
+.prof-card{
+  background:var(--bg2);border:1px solid var(--border);
+  padding:0 14px 14px;border-top:none;
+}
+.prof-pfp-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px}
+.prof-pfp-wrap{position:relative;display:inline-block;margin-top:-34px}
+.prof-pfp{
+  width:68px;height:68px;
+  border:3px solid var(--bg2);
+  background:var(--bg3);
+  object-fit:cover;display:block;
+}
+.prof-pfp-ph{
+  width:68px;height:68px;
+  border:3px solid var(--bg2);
+  background:var(--bg4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;color:var(--text3);font-weight:bold;
+}
+.pfp-edit-layer{
+  position:absolute;inset:3px;
+  background:rgba(0,0,0,.6);
+  display:none;align-items:center;justify-content:center;
+  cursor:pointer;font-size:10px;color:var(--accent);
+  text-align:center;line-height:1.3;
+}
+.prof-pfp-wrap.editable:hover .pfp-edit-layer{display:flex}
+
+.prof-name{font-size:15px;color:var(--text);font-weight:bold;margin-bottom:2px}
+.prof-handle{font-size:11px;color:var(--text3);margin-bottom:7px}
+.prof-bio{font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5;max-width:520px}
+.prof-stats-row{display:flex;gap:18px;font-size:11px;color:var(--text3)}
+.prof-stats-row b{color:var(--text);display:block;font-size:13px}
+
+.prof-tabs{
+  display:flex;background:var(--bg2);
+  border:1px solid var(--border);border-top:none;
+}
+.ptab{
+  padding:7px 14px;font-size:12px;color:var(--text3);
+  cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .12s;
+}
+.ptab:hover{color:var(--text)}
+.ptab.on{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ---- MODALS ---- */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.78);
+  z-index:600;display:flex;align-items:center;justify-content:center;
+}
+.modal-bg.hidden{display:none}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);
+  width:400px;max-width:96vw;max-height:90vh;overflow-y:auto;
+  padding:18px;position:relative;
+}
+.modal h3{font-size:13px;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.modal-x{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--text3);font-size:16px}
+.modal-x:hover{color:var(--text)}
+.modal .field{margin-bottom:10px}
+.modal .field label{display:block;margin-bottom:4px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.modal-footer{display:flex;gap:7px;justify-content:flex-end;margin-top:14px}
+
+.auth-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:12px}
+.at{background:none;border:none;color:var(--text3);font-size:12px;padding:5px 13px;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--f)}
+.at.on{color:var(--accent);border-bottom-color:var(--accent)}
+
+.msg-e{background:rgba(204,68,68,.1);border:1px solid rgba(204,68,68,.3);color:#c77;font-size:11px;padding:5px 8px;margin-bottom:9px;display:none}
+.msg-e.show{display:block}
+.msg-s{background:rgba(68,170,100,.1);border:1px solid rgba(68,170,100,.3);color:#4a9;font-size:11px;padding:5px 8px;margin-bottom:9px;display:none}
+.msg-s.show{display:block}
+
+/* Hidden file input */
+.hfi{display:none}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:18px;right:18px;z-index:9999;
+  background:var(--bg2);border:1px solid var(--border2);
+  color:var(--text);font-size:11px;padding:7px 14px;
+  opacity:0;transform:translateY(5px);pointer-events:none;
+  transition:all .18s;
+}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.ok{border-color:#4a9;color:#4a9}
+#toast.bad{border-color:var(--red);color:#c66}
+
+/* Misc */
+.empty-s{padding:24px;text-align:center;color:var(--text3);font-size:12px;border:1px solid var(--border);border-top:none;background:var(--bg2)}
+
+@media(max-width:720px){
+  #sidebar,#aside{display:none}
+  .pt-head,.pt-row{grid-template-columns:1fr 80px}
+  .pt-head :nth-child(n+3),.pt-row :nth-child(n+3){display:none}
+}
 </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
-<nav>
-  <span class="nav-logo" onclick="navigate('home')">Kitty<span>Bin</span></span>
-  <div class="nav-links">
-    <a onclick="navigate('home')">Home</a>
-    <a onclick="navigate('create')">+ New Paste</a>
-    <span id="nav-user-area">
-      <button class="nav-btn" onclick="openAuth('login')">Login</button>
-      <button class="nav-btn" onclick="openAuth('register')">Register</button>
-    </span>
+<!-- TOPBAR -->
+<div id="topbar">
+  <div id="logo" onclick="go('/')">kittybin<span>.lat</span></div>
+  <div class="tnav">
+    <a onclick="go('/')">Home</a>
+    <a onclick="go('/new')">+ New Paste</a>
+    <a onclick="go('/archive')">Archive</a>
   </div>
-</nav>
+  <div class="tnav-right" id="top-auth-area">
+    <button class="btn" onclick="openAuth('login')">Login</button>
+    <button class="btn-gold" onclick="openAuth('register')">Register</button>
+  </div>
+</div>
 
-<!-- URL BAR -->
-<div class="url-bar" id="url-bar">kittybin.lat/<span id="url-path">home</span></div>
+<!-- WRAP -->
+<div id="wrap">
 
-<!-- APP -->
-<div id="app">
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sb-sec">
+    <div class="sb-hd">Browse</div>
+    <div class="sb-a on" id="sb-home" onclick="go('/')">Recent Pastes</div>
+    <div class="sb-a" id="sb-arch" onclick="go('/archive')">Archive</div>
+  </div>
+  <div class="sb-sec" id="sb-logged-in" style="display:none">
+    <div class="sb-hd">Account</div>
+    <div class="sb-a" id="sb-me" onclick="goMyProfile()">My Profile</div>
+    <div class="sb-a" onclick="go('/my-pastes')">My Pastes</div>
+    <div class="sb-a" onclick="go('/new')">New Paste</div>
+    <div class="sb-a" onclick="doLogout()">Logout</div>
+  </div>
+  <div class="sb-sec" id="sb-logged-out">
+    <div class="sb-hd">Account</div>
+    <div class="sb-a" onclick="openAuth('login')">Login</div>
+    <div class="sb-a" onclick="openAuth('register')">Register</div>
+  </div>
+</div>
 
-  <!-- HOME VIEW -->
+<!-- CONTENT -->
+<div id="content">
+
+  <!-- HOME -->
   <div class="view active" id="view-home">
-    <div class="home-layout">
-      <aside class="sidebar-left">
-        <div class="sidebar-section">
-          <div class="sidebar-title">Browse</div>
-          <a class="sidebar-link active" onclick="loadFeed('recent')">Recent Pastes</a>
-          <a class="sidebar-link" onclick="loadFeed('public')">Public</a>
-        </div>
-        <div class="sidebar-section">
-          <div class="sidebar-title">Account</div>
-          <a class="sidebar-link" id="sb-my-pastes" onclick="navigate('my-pastes')" style="display:none">My Pastes</a>
-          <a class="sidebar-link" id="sb-profile" onclick="navigateProfile()" style="display:none">My Profile</a>
-          <a class="sidebar-link" onclick="navigate('create')">New Paste</a>
-        </div>
-      </aside>
+    <div class="pg-title"><strong>Recent Public Pastes</strong></div>
+    <div class="pt-head"><div>Title</div><div>Author</div><div>Visibility</div><div>Syntax</div><div>Date</div></div>
+    <div id="feed-list"><div class="empty-s">Loading...</div></div>
+  </div>
 
-      <main class="main-feed">
-        <div class="feed-header">
-          <span class="feed-title" id="feed-title">Recent Pastes</span>
-        </div>
-        <div id="paste-feed"><div class="loading">Loading pastes</div></div>
-      </main>
+  <!-- ARCHIVE -->
+  <div class="view" id="view-archive">
+    <div class="pg-title"><strong>Paste Archive</strong></div>
+    <div class="pt-head"><div>Title</div><div>Author</div><div>Visibility</div><div>Syntax</div><div>Date</div></div>
+    <div id="arch-list"><div class="empty-s">Loading...</div></div>
+  </div>
 
-      <aside class="sidebar-right">
-        <div class="sidebar-title">Stats</div>
-        <div class="stats-box">
-          <div class="stat-row"><span class="stat-label">Total Pastes</span><span class="stat-value" id="stat-total">-</span></div>
-          <div class="stat-row"><span class="stat-label">Users</span><span class="stat-value" id="stat-users">-</span></div>
-          <div class="stat-row"><span class="stat-label">Today</span><span class="stat-value" id="stat-today">-</span></div>
+  <!-- PASTE VIEW -->
+  <div class="view" id="view-paste">
+    <div class="pv-box">
+      <div class="pv-head">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div>
+            <div class="pv-head-title" id="pv-title">—</div>
+            <div class="pv-head-meta" id="pv-meta"></div>
+          </div>
+          <div id="pv-vis-wrap" style="margin-top:2px"></div>
         </div>
-      </aside>
+      </div>
+      <div class="pv-toolbar">
+        <button class="btn" onclick="copyRaw()">Copy</button>
+        <button class="btn" onclick="rawView()">Raw</button>
+        <button class="btn btn-danger" id="pv-del-btn" onclick="deletePaste()" style="display:none">Delete</button>
+      </div>
+      <div class="pv-content">
+        <pre id="pv-pre"></pre>
+      </div>
     </div>
   </div>
 
-  <!-- CREATE VIEW -->
+  <!-- CREATE -->
   <div class="view" id="view-create">
-    <div class="create-layout">
-      <div class="create-title">New Paste</div>
-      <div class="form-row">
-        <div class="form-group" style="flex:2">
-          <label class="form-label">Title</label>
-          <input class="form-input" id="paste-title" type="text" placeholder="Untitled Paste" maxlength="120">
+    <div class="pg-title"><strong>New Paste</strong></div>
+    <div class="cr-wrap">
+      <div class="field-row">
+        <div class="field field-grow" style="flex:3">
+          <label>Title</label>
+          <input type="text" id="c-title" placeholder="Untitled Paste" maxlength="120">
         </div>
-        <div class="form-group">
-          <label class="form-label">Visibility</label>
-          <select class="form-select" id="paste-visibility">
+        <div class="field">
+          <label>Visibility</label>
+          <select id="c-vis">
             <option value="public">Public</option>
             <option value="unlisted">Unlisted</option>
             <option value="private">Private</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Syntax</label>
-          <select class="form-select" id="paste-syntax">
+        <div class="field">
+          <label>Syntax</label>
+          <select id="c-syn">
             <option value="none">Plain Text</option>
             <option value="bash">Bash</option>
             <option value="python">Python</option>
@@ -782,646 +447,574 @@
             <option value="sql">SQL</option>
             <option value="json">JSON</option>
             <option value="markdown">Markdown</option>
+            <option value="php">PHP</option>
+            <option value="c">C / C++</option>
           </select>
         </div>
       </div>
-      <div class="form-group" style="margin-bottom:1rem">
-        <label class="form-label">Content</label>
-        <textarea class="form-textarea" id="paste-content" placeholder="Paste your content here..."></textarea>
+      <div class="field">
+        <label>Content</label>
+        <textarea class="cr-editor" id="c-body" placeholder="Paste your content here..."></textarea>
       </div>
-      <div style="display:flex;gap:0.8rem;align-items:center">
-        <button class="btn-primary" onclick="submitPaste()">Submit Paste</button>
-        <button class="btn-secondary" onclick="navigate('home')">Cancel</button>
-        <span id="create-error" style="font-size:0.7rem;color:var(--accent2);display:none"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- PASTE VIEW -->
-  <div class="view" id="view-paste">
-    <div class="paste-view">
-      <div class="paste-header" id="paste-detail-header">
-        <div class="paste-h-title" id="pd-title">Loading...</div>
-        <div class="paste-h-meta" id="pd-meta"></div>
-      </div>
-      <div class="paste-toolbar">
-        <button class="tb-btn" onclick="copyPaste()">Copy Raw</button>
-        <button class="tb-btn" onclick="rawPaste()">Raw</button>
-        <button class="tb-btn danger" id="tb-delete" onclick="deletePaste()" style="display:none">Delete</button>
-      </div>
-      <div class="paste-content-box">
-        <pre id="paste-detail-content"><div class="loading">Loading</div></pre>
+      <div class="sub-row">
+        <button class="btn-gold" onclick="submitPaste()">Submit Paste</button>
+        <button class="btn" onclick="go('/')">Cancel</button>
+        <span class="err" id="c-err" style="display:none"></span>
       </div>
     </div>
   </div>
 
-  <!-- PROFILE VIEW -->
+  <!-- PROFILE -->
   <div class="view" id="view-profile">
-    <div class="profile-layout">
-      <div class="profile-header">
-        <div class="profile-avatar" id="profile-avatar">?</div>
-        <div class="profile-info">
-          <h2 id="profile-username">Loading...</h2>
-          <div class="profile-handle" id="profile-handle"></div>
-          <div class="profile-stats">
-            <div class="profile-stat"><span id="profile-paste-count">0</span>Pastes</div>
-            <div class="profile-stat"><span id="profile-join-date">-</span>Joined</div>
+    <!-- Banner -->
+    <div class="prof-banner" id="prof-banner">
+      <img id="prof-banner-img" alt="">
+      <div class="banner-overlay">✎ &nbsp;Change Banner</div>
+      <div id="prof-banner-hint" class="prof-banner no-banner" style="font-size:11px;color:var(--text3)"></div>
+    </div>
+    <input type="file" id="fi-banner" class="hfi" accept="image/*" onchange="uploadBanner(this)">
+
+    <!-- Profile card -->
+    <div class="prof-card">
+      <div class="prof-pfp-row">
+        <div class="prof-pfp-wrap" id="prof-pfp-wrap">
+          <div class="prof-pfp-ph" id="prof-pfp-ph">?</div>
+          <img class="prof-pfp" id="prof-pfp-img" alt="" style="display:none">
+          <div class="pfp-edit-layer" id="pfp-edit-layer" onclick="document.getElementById('fi-pfp').click()">
+            ✎<br>Change
           </div>
         </div>
+        <input type="file" id="fi-pfp" class="hfi" accept="image/*" onchange="uploadPfp(this)">
+        <div id="prof-edit-btn-wrap" style="display:none;padding-top:40px">
+          <button class="btn" onclick="openEditProfile()">Edit Profile</button>
+        </div>
       </div>
-      <div id="profile-pastes-feed"><div class="loading">Loading pastes</div></div>
+      <div class="prof-name" id="prof-name">—</div>
+      <div class="prof-handle" id="prof-handle">—</div>
+      <div class="prof-bio" id="prof-bio"></div>
+      <div class="prof-stats-row">
+        <div><b id="prof-cnt">0</b>Pastes</div>
+        <div><b id="prof-joined">—</b>Joined</div>
+      </div>
     </div>
+    <div class="prof-tabs">
+      <div class="ptab on">Pastes</div>
+    </div>
+    <div id="prof-paste-list"><div class="empty-s">Loading...</div></div>
   </div>
 
-  <!-- MY PASTES VIEW -->
+  <!-- MY PASTES -->
   <div class="view" id="view-my-pastes">
-    <div class="create-layout">
-      <div class="create-title">My Pastes</div>
-      <div id="my-pastes-feed"><div class="loading">Loading</div></div>
-    </div>
+    <div class="pg-title"><strong>My Pastes</strong></div>
+    <div class="pt-head"><div>Title</div><div>Author</div><div>Visibility</div><div>Syntax</div><div>Date</div></div>
+    <div id="my-list"><div class="empty-s">Loading...</div></div>
   </div>
 
+</div><!-- /content -->
+
+<!-- ASIDE -->
+<div id="aside">
+  <div class="aside-hd">Site Stats</div>
+  <div class="stats-box">
+    <div class="stat-r"><span class="k">Pastes</span><span class="v" id="st-pastes">—</span></div>
+    <div class="stat-r"><span class="k">Members</span><span class="v" id="st-members">—</span></div>
+    <div class="stat-r"><span class="k">Today</span><span class="v" id="st-today">—</span></div>
+  </div>
+  <div class="aside-hd" style="margin-top:10px">New Members</div>
+  <div id="recent-members"></div>
 </div>
 
-<!-- AUTH MODAL -->
-<div class="modal-overlay hidden" id="auth-modal">
+</div><!-- /wrap -->
+
+<!-- ===== AUTH MODAL ===== -->
+<div class="modal-bg hidden" id="auth-modal">
   <div class="modal">
-    <button class="modal-close" onclick="closeAuth()">✕</button>
-    <div class="modal-title">KittyBin</div>
-    <div class="modal-tabs">
-      <button class="modal-tab active" id="tab-login" onclick="switchTab('login')">Login</button>
-      <button class="modal-tab" id="tab-register" onclick="switchTab('register')">Register</button>
+    <button class="modal-x" onclick="closeAuth()">✕</button>
+    <h3>KittyBin Account</h3>
+    <div class="auth-tabs">
+      <button class="at on" id="at-l" onclick="atab('login')">Login</button>
+      <button class="at" id="at-r" onclick="atab('register')">Register</button>
     </div>
-    <div id="auth-error" class="auth-error"></div>
-    <div id="auth-success" class="auth-success"></div>
+    <div class="msg-e" id="auth-err"></div>
+    <div class="msg-s" id="auth-ok"></div>
 
-    <!-- Login form -->
-    <div id="form-login">
-      <div class="form-group" style="margin-bottom:0.8rem">
-        <label class="form-label">Email</label>
-        <input class="form-input" id="login-email" type="email" placeholder="you@example.com">
+    <div id="auth-lf">
+      <div class="field" style="margin-bottom:9px">
+        <label>Email</label>
+        <input type="email" id="l-email" style="width:100%" placeholder="you@example.com">
       </div>
-      <div class="form-group" style="margin-bottom:1.2rem">
-        <label class="form-label">Password</label>
-        <input class="form-input" id="login-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="field" style="margin-bottom:13px">
+        <label>Password</label>
+        <input type="password" id="l-pass" style="width:100%" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
-      <button class="btn-primary" style="width:100%" onclick="doLogin()">Login</button>
+      <button class="btn-gold" style="width:100%" onclick="doLogin()">Login</button>
     </div>
 
-    <!-- Register form -->
-    <div id="form-register" style="display:none">
-      <div class="form-group" style="margin-bottom:0.8rem">
-        <label class="form-label">Username</label>
-        <input class="form-input" id="reg-username" type="text" placeholder="cooluser123" maxlength="30">
+    <div id="auth-rf" style="display:none">
+      <div class="field" style="margin-bottom:9px">
+        <label>Username</label>
+        <input type="text" id="r-user" style="width:100%" placeholder="cooluser" maxlength="30"
+          oninput="document.getElementById('r-prev').textContent=this.value||'username'">
       </div>
-      <div class="form-group" style="margin-bottom:0.8rem">
-        <label class="form-label">Email</label>
-        <input class="form-input" id="reg-email" type="email" placeholder="you@example.com">
+      <div class="field" style="margin-bottom:9px">
+        <label>Email</label>
+        <input type="email" id="r-email" style="width:100%" placeholder="you@example.com">
       </div>
-      <div class="form-group" style="margin-bottom:1.2rem">
-        <label class="form-label">Password</label>
-        <input class="form-input" id="reg-pass" type="password" placeholder="min 6 chars" onkeydown="if(event.key==='Enter')doRegister()">
+      <div class="field" style="margin-bottom:13px">
+        <label>Password</label>
+        <input type="password" id="r-pass" style="width:100%" placeholder="min 6 chars" onkeydown="if(event.key==='Enter')doRegister()">
       </div>
-      <button class="btn-primary" style="width:100%" onclick="doRegister()">Create Account</button>
-      <div style="font-size:0.65rem;color:var(--text3);margin-top:0.8rem">
-        Your profile will be at: kittybin.lat/users/<span id="username-preview" style="color:var(--accent)">username</span>
+      <button class="btn-gold" style="width:100%" onclick="doRegister()">Create Account</button>
+      <div style="font-size:10px;color:var(--text3);margin-top:8px">
+        Your profile → kittybin.lat/users/<span id="r-prev" style="color:var(--accent)">username</span>
       </div>
     </div>
   </div>
 </div>
 
-<!-- TOAST -->
+<!-- ===== EDIT PROFILE MODAL ===== -->
+<div class="modal-bg hidden" id="ep-modal">
+  <div class="modal">
+    <button class="modal-x" onclick="closeEP()">✕</button>
+    <h3>Edit Profile</h3>
+    <div class="msg-e" id="ep-err"></div>
+    <div class="field">
+      <label>Display Name</label>
+      <input type="text" id="ep-name" style="width:100%" maxlength="40">
+    </div>
+    <div class="field">
+      <label>Bio</label>
+      <textarea id="ep-bio" style="width:100%;height:70px;resize:vertical"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeEP()">Cancel</button>
+      <button class="btn-gold" onclick="saveEP()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
-// ---- SUPABASE INIT ----
-const { createClient } = supabase;
+const {createClient} = supabase;
 const sb = createClient(
   'https://wuyzhbwupulxucstkylz.supabase.co',
   'sb_publishable_1WCrw4qXjTvfRB_XTTtxnQ_ZDWZEK3U'
 );
 
-let currentUser = null;
-let currentPasteId = null;
-let currentProfileUser = null;
+let ME = null;
+let _rawContent = '';
+let _curPaste = null;
+let _profViewing = null;
 
-// ---- INIT ----
+// ========== INIT ==========
 async function init() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    await loadUserProfile();
-  }
-
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-      currentUser = session.user;
-      await loadUserProfile();
-    } else if (event === 'SIGNED_OUT') {
-      currentUser = null;
-      updateNavForUser(null);
-    }
+  const {data:{session}} = await sb.auth.getSession();
+  if (session) { ME = session.user; await syncProfile(); }
+  sb.auth.onAuthStateChange(async (ev, s) => {
+    if (ev==='SIGNED_IN'&&s) { ME=s.user; await syncProfile(); renderNav(); }
+    else if (ev==='SIGNED_OUT') { ME=null; renderNav(); }
   });
-
-  // Route based on real URL path
-  handleRoute();
-  window.addEventListener('popstate', handleRoute);
-
+  renderNav();
+  window.addEventListener('popstate', route);
+  route();
   loadStats();
+  loadRecentMembers();
 }
 
-function handleRoute() {
-  // Strip leading slash, split into parts
-  const path = window.location.pathname.replace(/^\//, '') || '';
-  const parts = path.split('/').filter(Boolean);
-
-  if (!parts.length || parts[0] === 'home') {
-    _activateView('home');
-    loadFeed('recent');
-    setUrlBar('home');
-  } else if (parts[0] === 'paste' && parts[1]) {
-    showPaste(parts[1], true);
-  } else if (parts[0] === 'users' && parts[1]) {
-    showProfile(parts[1], true);
-  } else if (parts[0] === 'new') {
-    _activateView('create');
-    setUrlBar('new');
-  } else if (parts[0] === 'my-pastes') {
-    _activateView('my-pastes');
-    loadMyPastes();
-    setUrlBar('my-pastes');
-  } else {
-    _activateView('home');
-    loadFeed('recent');
-    setUrlBar('home');
-  }
+async function syncProfile() {
+  if (!ME) return;
+  const {data} = await sb.from('profiles').select('*').eq('id', ME.id).single();
+  ME.profile = data;
 }
 
-function _activateView(name) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  const el = document.getElementById('view-' + name);
-  if (el) el.classList.add('active');
-}
-
-// ---- USER PROFILE LOAD ----
-async function loadUserProfile() {
-  if (!currentUser) return;
-  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  currentUser.profile = data;
-  updateNavForUser(data);
-}
-
-function updateNavForUser(profile) {
-  const area = document.getElementById('nav-user-area');
-  const sbMyPastes = document.getElementById('sb-my-pastes');
-  const sbProfile = document.getElementById('sb-profile');
-
-  if (profile) {
+// ========== NAV ==========
+function renderNav() {
+  const area = document.getElementById('top-auth-area');
+  const sbIn = document.getElementById('sb-logged-in');
+  const sbOut = document.getElementById('sb-logged-out');
+  if (ME && ME.profile) {
+    const u = ME.profile.username;
     area.innerHTML = `
-      <a class="nav-links" style="color:var(--accent);font-size:0.75rem;padding:6px 10px;cursor:pointer" onclick="showProfile('${profile.username}')">@${profile.username}</a>
-      <button class="nav-btn nav-btn-danger" onclick="doLogout()">Logout</button>
+      <span style="color:var(--text3);font-size:11px;margin-right:6px">
+        <a onclick="go('/users/${u}')" style="color:var(--accent)">@${u}</a>
+      </span>
+      <button class="btn btn-danger" onclick="doLogout()">Logout</button>
     `;
-    sbMyPastes.style.display = 'block';
-    sbProfile.style.display = 'block';
+    sbIn.style.display = 'block';
+    sbOut.style.display = 'none';
+    document.getElementById('sb-me').textContent = '@' + u;
   } else {
     area.innerHTML = `
-      <button class="nav-btn" onclick="openAuth('login')">Login</button>
-      <button class="nav-btn" onclick="openAuth('register')">Register</button>
+      <button class="btn" onclick="openAuth('login')">Login</button>
+      <button class="btn-gold" onclick="openAuth('register')">Register</button>
     `;
-    sbMyPastes.style.display = 'none';
-    sbProfile.style.display = 'none';
+    sbIn.style.display = 'none';
+    sbOut.style.display = 'block';
   }
 }
 
-// ---- NAVIGATION ----
-function navigate(view) {
-  const pathMap = {
-    'home': '/',
-    'create': '/new',
-    'my-pastes': '/my-pastes',
-  };
-  const urlPath = pathMap[view] || ('/' + view);
-  history.pushState({}, '', urlPath);
-  _activateView(view);
-  setUrlBar(urlPath.replace(/^\//, '') || 'home');
+// ========== ROUTER ==========
+function go(path) { history.pushState({},''  ,path); route(); }
+function goMyProfile() { ME?.profile ? go('/users/'+ME.profile.username) : openAuth('login'); }
 
-  if (view === 'home') loadFeed('recent');
-  if (view === 'my-pastes') loadMyPastes();
-}
+function route() {
+  const p = location.pathname;
+  const parts = p.replace(/^\//,'').split('/').filter(Boolean);
+  setSbActive(null);
 
-function setUrlBar(path) {
-  document.getElementById('url-path').textContent = path;
-}
-
-function navigateProfile() {
-  if (currentUser && currentUser.profile) {
-    showProfile(currentUser.profile.username);
+  if (!parts.length || p==='/') {
+    show('home'); setSbActive('sb-home'); loadFeed();
+  } else if (parts[0]==='new') {
+    show('create');
+  } else if (parts[0]==='archive') {
+    show('archive'); setSbActive('sb-arch'); loadArchive();
+  } else if (parts[0]==='paste'&&parts[1]) {
+    show('paste'); loadPaste(parts[1]);
+  } else if (parts[0]==='users'&&parts[1]) {
+    show('profile'); loadProfile(parts[1]);
+  } else if (parts[0]==='my-pastes') {
+    show('my-pastes'); loadMyPastes();
+  } else {
+    show('home'); loadFeed();
   }
 }
 
-// ---- FEED ----
-async function loadFeed(type) {
-  document.getElementById('feed-title').textContent = type === 'recent' ? 'Recent Pastes' : 'Public Pastes';
-  document.getElementById('paste-feed').innerHTML = '<div class="loading">Loading pastes</div>';
-
-  const { data, error } = await sb
-    .from('pastes')
-    .select('id, title, visibility, syntax, created_at, author_username')
-    .eq('visibility', 'public')
-    .order('created_at', { ascending: false })
-    .limit(50);
-
-  if (error || !data || data.length === 0) {
-    document.getElementById('paste-feed').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>No pastes yet. Be the first!</div>';
-    return;
-  }
-
-  document.getElementById('paste-feed').innerHTML = data.map(p => renderPasteCard(p)).join('');
+function show(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+}
+function setSbActive(id) {
+  document.querySelectorAll('.sb-a').forEach(a=>a.classList.remove('on'));
+  if (id) document.getElementById(id)?.classList.add('on');
 }
 
-function renderPasteCard(p) {
-  const tag = `<span class="paste-tag tag-${p.visibility}">${p.visibility}</span>`;
-  const date = timeAgo(p.created_at);
-  const author = p.author_username
-    ? `<a onclick="showProfile('${p.author_username}');event.stopPropagation()">@${p.author_username}</a>`
-    : '<span style="color:var(--text3)">anonymous</span>';
-
-  return `
-    <div class="paste-card" onclick="showPaste('${p.id}')">
-      <div>
-        <div class="paste-card-title">${escHtml(p.title || 'Untitled')}</div>
-        <div class="paste-card-meta">${author} &nbsp;·&nbsp; ${p.syntax !== 'none' ? p.syntax : 'text'} &nbsp;·&nbsp; ${tag}</div>
-      </div>
-      <div class="paste-card-right">${date}</div>
-    </div>
-  `;
+// ========== FEED ==========
+async function loadFeed() {
+  document.getElementById('feed-list').innerHTML = '<div class="empty-s">Loading...</div>';
+  const {data} = await sb.from('pastes')
+    .select('id,title,visibility,syntax,created_at,author_username')
+    .eq('visibility','public')
+    .order('created_at',{ascending:false})
+    .limit(60);
+  renderTable('feed-list', data);
 }
-
-// ---- STATS ----
-async function loadStats() {
-  const { count: total } = await sb.from('pastes').select('*', { count: 'exact', head: true }).eq('visibility', 'public');
-  const { count: users } = await sb.from('profiles').select('*', { count: 'exact', head: true });
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const { count: todayCount } = await sb.from('pastes')
-    .select('*', { count: 'exact', head: true })
-    .gte('created_at', today.toISOString());
-
-  document.getElementById('stat-total').textContent = total || 0;
-  document.getElementById('stat-users').textContent = users || 0;
-  document.getElementById('stat-today').textContent = todayCount || 0;
+async function loadArchive() {
+  document.getElementById('arch-list').innerHTML = '<div class="empty-s">Loading...</div>';
+  const {data} = await sb.from('pastes')
+    .select('id,title,visibility,syntax,created_at,author_username')
+    .eq('visibility','public')
+    .order('created_at',{ascending:false})
+    .limit(500);
+  renderTable('arch-list', data);
 }
-
-// ---- SHOW PASTE ----
-async function showPaste(id, fromPopstate) {
-  currentPasteId = id;
-  _activateView('paste');
-  document.getElementById('pd-title').textContent = 'Loading...';
-  document.getElementById('pd-meta').innerHTML = '';
-  document.getElementById('paste-detail-content').innerHTML = '<div class="loading">Loading</div>';
-  document.getElementById('tb-delete').style.display = 'none';
-
-  if (!fromPopstate) history.pushState({}, '', '/paste/' + id);
-  setUrlBar('paste/' + id.substring(0,8) + '...');
-
-  const { data, error } = await sb.from('pastes').select('*').eq('id', id).single();
-  if (error || !data) {
-    document.getElementById('pd-title').textContent = 'Paste not found';
-    document.getElementById('paste-detail-content').innerHTML = '<div class="empty-state">This paste does not exist or has been removed.</div>';
-    return;
-  }
-
-  // Check private
-  if (data.visibility === 'private' && (!currentUser || currentUser.id !== data.user_id)) {
-    document.getElementById('pd-title').textContent = 'Private Paste';
-    document.getElementById('paste-detail-content').innerHTML = '<div class="empty-state">This paste is private.</div>';
-    return;
-  }
-
-  document.getElementById('pd-title').textContent = data.title || 'Untitled';
-
-  const visTag = `<span class="paste-tag tag-${data.visibility}">${data.visibility}</span>`;
-  const authorLink = data.author_username
-    ? `<a onclick="showProfile('${data.author_username}')">@${data.author_username}</a>`
-    : 'anonymous';
-
-  document.getElementById('pd-meta').innerHTML = `
-    <span>By ${authorLink}</span>
-    <span>${timeAgo(data.created_at)}</span>
-    <span>${data.syntax !== 'none' ? data.syntax : 'text'}</span>
-    <span>${visTag}</span>
-    <span style="color:var(--text3)">${formatDate(data.created_at)}</span>
-  `;
-
-  // Show delete if owner
-  if (currentUser && currentUser.id === data.user_id) {
-    document.getElementById('tb-delete').style.display = 'inline-block';
-  }
-
-  // Render with line numbers
-  const lines = (data.content || '').split('\n');
-  const linesHtml = lines.map(l => `<span class="paste-line">${escHtml(l) || ' '}</span>`).join('');
-  document.getElementById('paste-detail-content').innerHTML = linesHtml;
-  window._currentPasteContent = data.content;
-}
-
-function copyPaste() {
-  if (window._currentPasteContent) {
-    navigator.clipboard.writeText(window._currentPasteContent);
-    showToast('Copied to clipboard', 'success');
-  }
-}
-
-function rawPaste() {
-  if (window._currentPasteContent) {
-    const blob = new Blob([window._currentPasteContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-  }
-}
-
-async function deletePaste() {
-  if (!currentUser || !currentPasteId) return;
-  if (!confirm('Delete this paste?')) return;
-
-  const { error } = await sb.from('pastes').delete().eq('id', currentPasteId).eq('user_id', currentUser.id);
-  if (error) { showToast('Failed to delete', 'error'); return; }
-
-  showToast('Paste deleted', 'success');
-  navigate('home');
-}
-
-// ---- CREATE PASTE ----
-async function submitPaste() {
-  const title = document.getElementById('paste-title').value.trim() || 'Untitled';
-  const content = document.getElementById('paste-content').value;
-  const visibility = document.getElementById('paste-visibility').value;
-  const syntax = document.getElementById('paste-syntax').value;
-  const errEl = document.getElementById('create-error');
-
-  if (!content.trim()) {
-    errEl.textContent = 'Content cannot be empty.';
-    errEl.style.display = 'inline';
-    return;
-  }
-  errEl.style.display = 'none';
-
-  const payload = {
-    title,
-    content,
-    visibility,
-    syntax,
-    user_id: currentUser ? currentUser.id : null,
-    author_username: currentUser?.profile?.username || null,
-  };
-
-  const { data, error } = await sb.from('pastes').insert(payload).select().single();
-  if (error) {
-    errEl.textContent = 'Error creating paste: ' + error.message;
-    errEl.style.display = 'inline';
-    return;
-  }
-
-  // Clear form
-  document.getElementById('paste-title').value = '';
-  document.getElementById('paste-content').value = '';
-
-  showToast('Paste created!', 'success');
-  showPaste(data.id);
-}
-
-// ---- PROFILE ----
-async function showProfile(username, fromPopstate) {
-  _activateView('profile');
-  if (!fromPopstate) history.pushState({}, '', '/users/' + username);
-  setUrlBar(username);
-  document.title = username + ' — KittyBin';
-
-  document.getElementById('profile-username').textContent = 'Loading...';
-  document.getElementById('profile-handle').textContent = '';
-
-  const { data: profile, error } = await sb.from('profiles').select('*').eq('username', username).single();
-  if (error || !profile) {
-    document.getElementById('profile-username').textContent = 'User not found';
-    document.getElementById('profile-pastes-feed').innerHTML = '<div class="empty-state">This user does not exist.</div>';
-    return;
-  }
-
-  document.getElementById('profile-avatar').textContent = username[0].toUpperCase();
-  document.getElementById('profile-username').textContent = profile.display_name || profile.username;
-  document.getElementById('profile-handle').textContent = 'kittybin.lat/users/' + profile.username;
-  document.getElementById('profile-join-date').textContent = formatDate(profile.created_at, true);
-
-  // Load pastes
-  let query = sb.from('pastes')
-    .select('id, title, visibility, syntax, created_at')
-    .eq('author_username', username)
-    .order('created_at', { ascending: false });
-
-  // Only show public+unlisted unless it's you
-  if (!currentUser || currentUser.profile?.username !== username) {
-    query = query.in('visibility', ['public', 'unlisted']);
-  }
-
-  const { data: pastes } = await query.limit(100);
-  document.getElementById('profile-paste-count').textContent = pastes?.length || 0;
-
-  if (!pastes || pastes.length === 0) {
-    document.getElementById('profile-pastes-feed').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>No public pastes.</div>';
-    return;
-  }
-
-  document.getElementById('profile-pastes-feed').innerHTML = pastes.map(p => {
-    const tag = `<span class="paste-tag tag-${p.visibility}">${p.visibility}</span>`;
-    return `
-      <div class="paste-card" onclick="showPaste('${p.id}')">
-        <div>
-          <div class="paste-card-title">${escHtml(p.title || 'Untitled')}</div>
-          <div class="paste-card-meta">${p.syntax !== 'none' ? p.syntax : 'text'} &nbsp;·&nbsp; ${tag}</div>
-        </div>
-        <div class="paste-card-right">${timeAgo(p.created_at)}</div>
-      </div>
-    `;
-  }).join('');
-}
-
-// ---- MY PASTES ----
 async function loadMyPastes() {
-  if (!currentUser) {
-    document.getElementById('my-pastes-feed').innerHTML = '<div class="empty-state">You must be logged in.</div>';
+  if (!ME) { document.getElementById('my-list').innerHTML='<div class="empty-s">You must be logged in.</div>'; return; }
+  const {data} = await sb.from('pastes')
+    .select('id,title,visibility,syntax,created_at,author_username')
+    .eq('user_id',ME.id)
+    .order('created_at',{ascending:false});
+  renderTable('my-list', data);
+}
+function renderTable(id, rows) {
+  const el = document.getElementById(id);
+  if (!rows?.length) { el.innerHTML='<div class="empty-s">No pastes found.</div>'; return; }
+  el.innerHTML = rows.map(p=>`
+    <div class="pt-row" onclick="go('/paste/${p.id}')">
+      <div class="pt-title">${escH(p.title||'Untitled')}</div>
+      <div class="pt-author">${p.author_username?`<a onclick="event.stopPropagation();go('/users/${p.author_username}')">${escH(p.author_username)}</a>`:'<span style="color:var(--text3)">anon</span>'}</div>
+      <div><span class="vis vis-${p.visibility}">${p.visibility}</span></div>
+      <div style="color:var(--text3);font-size:11px">${p.syntax!=='none'?p.syntax:'text'}</div>
+      <div class="pt-date">${timeAgo(p.created_at)}</div>
+    </div>
+  `).join('');
+}
+
+// ========== PASTE VIEW ==========
+async function loadPaste(id) {
+  _curPaste=null; _rawContent='';
+  document.getElementById('pv-title').textContent='Loading...';
+  document.getElementById('pv-meta').innerHTML='';
+  document.getElementById('pv-pre').innerHTML='';
+  document.getElementById('pv-vis-wrap').innerHTML='';
+  document.getElementById('pv-del-btn').style.display='none';
+
+  const {data,error} = await sb.from('pastes').select('*').eq('id',id).single();
+  if (error||!data) {
+    document.getElementById('pv-title').textContent='Paste not found';
+    document.getElementById('pv-pre').textContent='This paste does not exist or was removed.';
+    return;
+  }
+  if (data.visibility==='private'&&(!ME||ME.id!==data.user_id)) {
+    document.getElementById('pv-title').textContent='Private Paste';
+    document.getElementById('pv-pre').textContent='This paste is private.';
+    return;
+  }
+  _curPaste=data; _rawContent=data.content||'';
+  document.title=(data.title||'Untitled')+' — KittyBin';
+  document.getElementById('pv-title').textContent=data.title||'Untitled';
+  const auth=data.author_username
+    ?`<a onclick="go('/users/${data.author_username}')">${escH(data.author_username)}</a>`
+    :'anonymous';
+  document.getElementById('pv-meta').innerHTML=`By ${auth} &nbsp;·&nbsp; ${formatDate(data.created_at)} &nbsp;·&nbsp; ${data.syntax!=='none'?data.syntax:'Plain Text'}`;
+  document.getElementById('pv-vis-wrap').innerHTML=`<span class="vis vis-${data.visibility}">${data.visibility}</span>`;
+  if (ME&&ME.id===data.user_id) document.getElementById('pv-del-btn').style.display='';
+  document.getElementById('pv-pre').innerHTML=(data.content||'').split('\n').map(l=>`<span class="ln">${escH(l)||' '}</span>`).join('');
+}
+function copyRaw(){navigator.clipboard.writeText(_rawContent);toast('Copied!','ok')}
+function rawView(){const b=new Blob([_rawContent],{type:'text/plain'});window.open(URL.createObjectURL(b),'_blank')}
+async function deletePaste(){
+  if(!_curPaste||!ME)return;
+  if(!confirm('Delete this paste permanently?'))return;
+  await sb.from('pastes').delete().eq('id',_curPaste.id).eq('user_id',ME.id);
+  toast('Deleted','ok'); go('/');
+}
+
+// ========== CREATE ==========
+async function submitPaste(){
+  const title=document.getElementById('c-title').value.trim()||'Untitled';
+  const body=document.getElementById('c-body').value;
+  const vis=document.getElementById('c-vis').value;
+  const syn=document.getElementById('c-syn').value;
+  const errEl=document.getElementById('c-err');
+  if(!body.trim()){errEl.textContent='Content cannot be empty.';errEl.style.display='inline';return;}
+  errEl.style.display='none';
+  const {data,error}=await sb.from('pastes').insert({
+    title,content:body,visibility:vis,syntax:syn,
+    user_id:ME?ME.id:null,
+    author_username:ME?.profile?.username||null
+  }).select().single();
+  if(error){errEl.textContent=error.message;errEl.style.display='inline';return;}
+  document.getElementById('c-title').value='';
+  document.getElementById('c-body').value='';
+  toast('Paste created!','ok');
+  go('/paste/'+data.id);
+}
+
+// ========== PROFILE ==========
+async function loadProfile(username) {
+  _profViewing=username;
+  document.title=username+' — KittyBin';
+
+  // Reset
+  document.getElementById('prof-name').textContent='...';
+  document.getElementById('prof-handle').textContent='';
+  document.getElementById('prof-bio').textContent='';
+  document.getElementById('prof-cnt').textContent='0';
+  document.getElementById('prof-joined').textContent='—';
+  document.getElementById('prof-pfp-ph').textContent=username[0]?.toUpperCase()||'?';
+  document.getElementById('prof-pfp-ph').style.display='flex';
+  document.getElementById('prof-pfp-img').style.display='none';
+  document.getElementById('prof-banner-img').style.display='none';
+  document.getElementById('prof-edit-btn-wrap').style.display='none';
+
+  const banner=document.getElementById('prof-banner');
+  const pfpWrap=document.getElementById('prof-pfp-wrap');
+  banner.classList.remove('editable');
+  pfpWrap.classList.remove('editable');
+
+  const {data:prof,error}=await sb.from('profiles').select('*').eq('username',username).single();
+  if(error||!prof){
+    document.getElementById('prof-name').textContent='User not found';
+    document.getElementById('prof-paste-list').innerHTML='<div class="empty-s">This user does not exist.</div>';
     return;
   }
 
-  const { data } = await sb.from('pastes')
-    .select('id, title, visibility, syntax, created_at')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: false });
+  document.getElementById('prof-name').textContent=prof.display_name||prof.username;
+  document.getElementById('prof-handle').textContent='kittybin.lat/users/'+prof.username;
+  document.getElementById('prof-bio').textContent=prof.bio||'';
+  document.getElementById('prof-joined').textContent=formatDate(prof.created_at,true);
 
-  if (!data || data.length === 0) {
-    document.getElementById('my-pastes-feed').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>You have no pastes yet.</div>';
-    return;
+  // PFP
+  if(prof.avatar_url){
+    const img=document.getElementById('prof-pfp-img');
+    img.src=prof.avatar_url+'?v='+Date.now();
+    img.style.display='block';
+    document.getElementById('prof-pfp-ph').style.display='none';
+  }
+  // Banner
+  if(prof.banner_url){
+    const bi=document.getElementById('prof-banner-img');
+    bi.src=prof.banner_url+'?v='+Date.now();
+    bi.style.display='block';
   }
 
-  document.getElementById('my-pastes-feed').innerHTML = data.map(p => {
-    const tag = `<span class="paste-tag tag-${p.visibility}">${p.visibility}</span>`;
-    return `
-      <div class="paste-card" onclick="showPaste('${p.id}')">
-        <div>
-          <div class="paste-card-title">${escHtml(p.title || 'Untitled')}</div>
-          <div class="paste-card-meta">${p.syntax !== 'none' ? p.syntax : 'text'} &nbsp;·&nbsp; ${tag}</div>
-        </div>
-        <div class="paste-card-right">${timeAgo(p.created_at)}</div>
+  // Editable if mine
+  const isMe=ME?.profile?.username===username;
+  if(isMe){
+    document.getElementById('prof-edit-btn-wrap').style.display='block';
+    banner.classList.add('editable');
+    pfpWrap.classList.add('editable');
+    banner.onclick=()=>document.getElementById('fi-banner').click();
+  } else {
+    banner.onclick=null;
+  }
+
+  // Pastes
+  let q=sb.from('pastes').select('id,title,visibility,syntax,created_at').eq('author_username',username).order('created_at',{ascending:false});
+  if(!isMe) q=q.in('visibility',['public','unlisted']);
+  const {data:pastes}=await q.limit(200);
+  document.getElementById('prof-cnt').textContent=pastes?.length||0;
+
+  if(!pastes?.length){
+    document.getElementById('prof-paste-list').innerHTML='<div class="empty-s">No pastes yet.</div>';
+    return;
+  }
+  document.getElementById('prof-paste-list').innerHTML=
+    `<div class="pt-head" style="grid-template-columns:minmax(0,3fr) 80px 80px 120px"><div>Title</div><div>Visibility</div><div>Syntax</div><div>Date</div></div>`+
+    pastes.map(p=>`
+      <div class="pt-row" style="grid-template-columns:minmax(0,3fr) 80px 80px 120px" onclick="go('/paste/${p.id}')">
+        <div class="pt-title">${escH(p.title||'Untitled')}</div>
+        <div><span class="vis vis-${p.visibility}">${p.visibility}</span></div>
+        <div style="color:var(--text3);font-size:11px">${p.syntax!=='none'?p.syntax:'text'}</div>
+        <div class="pt-date">${timeAgo(p.created_at)}</div>
       </div>
-    `;
-  }).join('');
+    `).join('');
 }
 
-// ---- AUTH ----
-function openAuth(tab) {
-  document.getElementById('auth-modal').classList.remove('hidden');
-  switchTab(tab);
+// ========== UPLOADS ==========
+async function uploadPfp(input){
+  const file=input.files[0]; if(!file||!ME)return;
+  toast('Uploading...','');
+  const ext=file.name.split('.').pop();
+  const path=`avatars/${ME.id}.${ext}`;
+  const {error}=await sb.storage.from('user-media').upload(path,file,{upsert:true,contentType:file.type});
+  if(error){toast('Upload failed: '+error.message,'bad');input.value='';return;}
+  const {data:{publicUrl}}=sb.storage.from('user-media').getPublicUrl(path);
+  const url=publicUrl+'?v='+Date.now();
+  await sb.from('profiles').update({avatar_url:url}).eq('id',ME.id);
+  ME.profile.avatar_url=url;
+  const img=document.getElementById('prof-pfp-img');
+  img.src=url; img.style.display='block';
+  document.getElementById('prof-pfp-ph').style.display='none';
+  toast('Avatar updated!','ok'); input.value='';
+}
+async function uploadBanner(input){
+  const file=input.files[0]; if(!file||!ME)return;
+  toast('Uploading...','');
+  const ext=file.name.split('.').pop();
+  const path=`banners/${ME.id}.${ext}`;
+  const {error}=await sb.storage.from('user-media').upload(path,file,{upsert:true,contentType:file.type});
+  if(error){toast('Upload failed: '+error.message,'bad');input.value='';return;}
+  const {data:{publicUrl}}=sb.storage.from('user-media').getPublicUrl(path);
+  const url=publicUrl+'?v='+Date.now();
+  await sb.from('profiles').update({banner_url:url}).eq('id',ME.id);
+  ME.profile.banner_url=url;
+  const bi=document.getElementById('prof-banner-img');
+  bi.src=url; bi.style.display='block';
+  toast('Banner updated!','ok'); input.value='';
 }
 
-function closeAuth() {
-  document.getElementById('auth-modal').classList.add('hidden');
-  document.getElementById('auth-error').classList.remove('show');
-  document.getElementById('auth-success').classList.remove('show');
+// ========== EDIT PROFILE ==========
+function openEditProfile(){
+  if(!ME?.profile)return;
+  document.getElementById('ep-name').value=ME.profile.display_name||'';
+  document.getElementById('ep-bio').value=ME.profile.bio||'';
+  document.getElementById('ep-err').classList.remove('show');
+  document.getElementById('ep-modal').classList.remove('hidden');
+}
+function closeEP(){document.getElementById('ep-modal').classList.add('hidden')}
+async function saveEP(){
+  const name=document.getElementById('ep-name').value.trim();
+  const bio=document.getElementById('ep-bio').value.trim();
+  const errEl=document.getElementById('ep-err');
+  const {error}=await sb.from('profiles').update({display_name:name||ME.profile.username,bio}).eq('id',ME.id);
+  if(error){errEl.textContent=error.message;errEl.classList.add('show');return;}
+  ME.profile.display_name=name||ME.profile.username;
+  ME.profile.bio=bio;
+  document.getElementById('prof-name').textContent=ME.profile.display_name;
+  document.getElementById('prof-bio').textContent=bio;
+  closeEP(); toast('Profile updated!','ok');
 }
 
-function switchTab(tab) {
-  document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
-  document.getElementById('form-register').style.display = tab === 'register' ? 'block' : 'none';
-  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
-  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
-  document.getElementById('auth-error').classList.remove('show');
-  document.getElementById('auth-success').classList.remove('show');
+// ========== AUTH ==========
+function openAuth(t){document.getElementById('auth-modal').classList.remove('hidden');atab(t)}
+function closeAuth(){document.getElementById('auth-modal').classList.add('hidden')}
+function atab(t){
+  document.getElementById('auth-lf').style.display=t==='login'?'block':'none';
+  document.getElementById('auth-rf').style.display=t==='register'?'block':'none';
+  document.getElementById('at-l').classList.toggle('on',t==='login');
+  document.getElementById('at-r').classList.toggle('on',t==='register');
+  document.getElementById('auth-err').classList.remove('show');
+  document.getElementById('auth-ok').classList.remove('show');
+}
+async function doLogin(){
+  const email=document.getElementById('l-email').value.trim();
+  const pass=document.getElementById('l-pass').value;
+  const errEl=document.getElementById('auth-err');
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){errEl.textContent=error.message;errEl.classList.add('show');return;}
+  closeAuth(); toast('Welcome back!','ok'); loadFeed();
+}
+async function doRegister(){
+  const username=document.getElementById('r-user').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');
+  const email=document.getElementById('r-email').value.trim();
+  const pass=document.getElementById('r-pass').value;
+  const errEl=document.getElementById('auth-err');
+  const okEl=document.getElementById('auth-ok');
+  if(username.length<3){errEl.textContent='Username must be 3+ chars.';errEl.classList.add('show');return;}
+  const {data:ex}=await sb.from('profiles').select('id').eq('username',username).maybeSingle();
+  if(ex){errEl.textContent='Username taken.';errEl.classList.add('show');return;}
+  const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{username}}});
+  if(error){errEl.textContent=error.message;errEl.classList.add('show');return;}
+  if(data.user) await sb.from('profiles').upsert({id:data.user.id,username,display_name:username,email});
+  okEl.textContent='Account created! You can now log in.';
+  okEl.classList.add('show');
+  setTimeout(()=>{atab('login');document.getElementById('l-email').value=email;},1800);
+}
+async function doLogout(){
+  await sb.auth.signOut(); ME=null; renderNav(); toast('Logged out','ok'); go('/');
 }
 
-document.getElementById('reg-username').addEventListener('input', function() {
-  document.getElementById('username-preview').textContent = this.value || 'username';
-});
-
-async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value;
-  const errEl = document.getElementById('auth-error');
-
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if (error) {
-    errEl.textContent = error.message;
-    errEl.classList.add('show');
-    return;
-  }
-
-  closeAuth();
-  showToast('Welcome back!', 'success');
-  loadFeed('recent');
-  loadStats();
+// ========== STATS / MEMBERS ==========
+async function loadStats(){
+  const {count:c1}=await sb.from('pastes').select('*',{count:'exact',head:true}).eq('visibility','public');
+  const {count:c2}=await sb.from('profiles').select('*',{count:'exact',head:true});
+  const tod=new Date();tod.setHours(0,0,0,0);
+  const {count:c3}=await sb.from('pastes').select('*',{count:'exact',head:true}).gte('created_at',tod.toISOString());
+  document.getElementById('st-pastes').textContent=c1||0;
+  document.getElementById('st-members').textContent=c2||0;
+  document.getElementById('st-today').textContent=c3||0;
+}
+async function loadRecentMembers(){
+  const {data}=await sb.from('profiles').select('username,avatar_url').order('created_at',{ascending:false}).limit(8);
+  if(!data?.length)return;
+  document.getElementById('recent-members').innerHTML=data.map(u=>`
+    <div class="member-row">
+      <div class="member-mini-pfp">
+        ${u.avatar_url?`<img src="${u.avatar_url}" alt="">`:escH(u.username[0]?.toUpperCase()||'?')}
+      </div>
+      <a onclick="go('/users/${u.username}')" style="font-size:11px">@${escH(u.username)}</a>
+    </div>
+  `).join('');
 }
 
-async function doRegister() {
-  const username = document.getElementById('reg-username').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
-  const email = document.getElementById('reg-email').value.trim();
-  const pass = document.getElementById('reg-pass').value;
-  const errEl = document.getElementById('auth-error');
-  const successEl = document.getElementById('auth-success');
-
-  if (!username || username.length < 3) {
-    errEl.textContent = 'Username must be at least 3 characters (letters, numbers, _, -)';
-    errEl.classList.add('show');
-    return;
-  }
-
-  // Check username taken
-  const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
-  if (existing) {
-    errEl.textContent = 'Username is already taken.';
-    errEl.classList.add('show');
-    return;
-  }
-
-  const { data, error } = await sb.auth.signUp({
-    email,
-    password: pass,
-    options: { data: { username } }
-  });
-
-  if (error) {
-    errEl.textContent = error.message;
-    errEl.classList.add('show');
-    return;
-  }
-
-  // Create profile
-  if (data.user) {
-    await sb.from('profiles').upsert({
-      id: data.user.id,
-      username,
-      display_name: username,
-      email,
-    });
-  }
-
-  successEl.textContent = 'Account created! Check your email to confirm, or login now.';
-  successEl.classList.add('show');
-  errEl.classList.remove('show');
-
-  setTimeout(() => {
-    switchTab('login');
-    document.getElementById('login-email').value = email;
-  }, 2000);
+// ========== UTILS ==========
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function timeAgo(iso){
+  const d=Math.floor((Date.now()-new Date(iso))/1000);
+  if(d<60)return d+'s ago';
+  if(d<3600)return Math.floor(d/60)+'m ago';
+  if(d<86400)return Math.floor(d/3600)+'h ago';
+  if(d<604800)return Math.floor(d/86400)+'d ago';
+  return formatDate(iso);
 }
-
-async function doLogout() {
-  await sb.auth.signOut();
-  showToast('Logged out', 'success');
-  navigate('home');
+function formatDate(iso,short){
+  if(!iso)return '—';
+  const d=new Date(iso);
+  return short
+    ?d.toLocaleDateString('en-US',{year:'numeric',month:'short'})
+    :d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
 }
-
-// ---- UTILS ----
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+let _tt;
+function toast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show '+(type||'');
+  clearTimeout(_tt);_tt=setTimeout(()=>t.className='',2600);
 }
+document.getElementById('auth-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAuth()});
+document.getElementById('ep-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEP()});
 
-function timeAgo(iso) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return m + 'm ago';
-  const h = Math.floor(m / 60);
-  if (h < 24) return h + 'h ago';
-  const d = Math.floor(h / 24);
-  if (d < 30) return d + 'd ago';
-  return formatDate(iso, true);
-}
-
-function formatDate(iso, short) {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  if (short) return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
-let toastTimer;
-function showToast(msg, type) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show ' + (type || '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.className = ''; }, 3000);
-}
-
-// Close modal on overlay click
-document.getElementById('auth-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeAuth();
-});
-
-// ---- START ----
 init();
 </script>
 </body>
