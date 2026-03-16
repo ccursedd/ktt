@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KittyBin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #080b0f;
+    --bg2: #0d1117;
+    --bg3: #111820;
+    --border: #1e2d3d;
+    --border2: #243447;
+    --accent: #00ffe0;
+    --accent2: #ff2e6c;
+    --accent3: #7b61ff;
+    --text: #c9d8e8;
+    --text2: #6b8299;
+    --text3: #3d5268;
+    --green: #00ff88;
+    --red: #ff2e6c;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Rajdhani', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Grid background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,224,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,224,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ---- NAVBAR ---- */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(8,11,15,0.95);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 52px;
+  }
+
+  .nav-logo {
+    font-family: var(--sans);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-decoration: none;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 0 0 20px rgba(0,255,224,0.5);
+    cursor: pointer;
+  }
+  .nav-logo span { color: var(--accent2); }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .nav-links a, .nav-links button {
+    background: none;
+    border: none;
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 6px 14px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .nav-links a:hover, .nav-links button:hover { color: var(--accent); }
+
+  .nav-btn {
+    background: transparent !important;
+    border: 1px solid var(--accent) !important;
+    color: var(--accent) !important;
+    border-radius: 2px;
+    padding: 5px 14px !important;
+  }
+  .nav-btn:hover { background: rgba(0,255,224,0.08) !important; }
+
+  .nav-btn-danger {
+    border-color: var(--accent2) !important;
+    color: var(--accent2) !important;
+  }
+  .nav-btn-danger:hover { background: rgba(255,46,108,0.08) !important; }
+
+  /* ---- PAGE WRAPPER ---- */
+  #app {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ---- VIEWS ---- */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ---- HOME / FEED ---- */
+  .home-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr 200px;
+    gap: 0;
+    min-height: calc(100vh - 52px);
+  }
+
+  /* Left sidebar */
+  .sidebar-left {
+    border-right: 1px solid var(--border);
+    padding: 1.5rem 1rem;
+  }
+
+  .sidebar-section {
+    margin-bottom: 2rem;
+  }
+
+  .sidebar-title {
+    font-size: 0.65rem;
+    color: var(--text3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-link {
+    display: block;
+    padding: 5px 8px;
+    color: var(--text2);
+    text-decoration: none;
+    font-size: 0.75rem;
+    border-radius: 2px;
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .sidebar-link:hover { color: var(--accent); background: rgba(0,255,224,0.05); }
+  .sidebar-link.active { color: var(--accent); }
+
+  /* Main feed */
+  .main-feed {
+    border-right: 1px solid var(--border);
+    padding: 1.5rem;
+  }
+
+  .feed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .feed-title {
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text2);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Paste card */
+  .paste-card {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    margin-bottom: 1px;
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .paste-card:hover {
+    border-color: var(--border2);
+    background: var(--bg3);
+  }
+
+  .paste-card-title {
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .paste-card-title:hover { text-decoration: underline; }
+
+  .paste-card-meta {
+    font-size: 0.65rem;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  .paste-card-meta a {
+    color: var(--text2);
+    text-decoration: none;
+  }
+  .paste-card-meta a:hover { color: var(--accent); }
+
+  .paste-card-right {
+    text-align: right;
+    font-size: 0.65rem;
+    color: var(--text3);
+    white-space: nowrap;
+  }
+
+  .paste-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 0.6rem;
+    border-radius: 2px;
+    margin-right: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .tag-public { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.2); }
+  .tag-private { background: rgba(255,46,108,0.1); color: var(--accent2); border: 1px solid rgba(255,46,108,0.2); }
+  .tag-unlisted { background: rgba(123,97,255,0.1); color: var(--accent3); border: 1px solid rgba(123,97,255,0.2); }
+
+  /* Right sidebar */
+  .sidebar-right {
+    padding: 1.5rem 1rem;
+  }
+
+  .stats-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: var(--text3); }
+  .stat-value { color: var(--accent); }
+
+  /* ---- PASTE VIEW ---- */
+  .paste-view {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .paste-header {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1px;
+  }
+
+  .paste-h-title {
+    font-family: var(--sans);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+  }
+
+  .paste-h-meta {
+    font-size: 0.7rem;
+    color: var(--text3);
+    display: flex;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+  }
+
+  .paste-h-meta a { color: var(--accent); text-decoration: none; }
+  .paste-h-meta a:hover { text-decoration: underline; }
+
+  .paste-toolbar {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-top: none;
+    padding: 0.4rem 1rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .tb-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 3px 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+  .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tb-btn.danger:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .paste-content-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-top: none;
+    overflow-x: auto;
+  }
+
+  .paste-content-box pre {
+    padding: 1.2rem;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    counter-reset: line;
+  }
+
+  .paste-line {
+    display: block;
+    position: relative;
+    padding-left: 3.5rem;
+  }
+  .paste-line::before {
+    counter-increment: line;
+    content: counter(line);
+    position: absolute;
+    left: 0;
+    width: 3rem;
+    text-align: right;
+    color: var(--text3);
+    font-size: 0.7rem;
+    user-select: none;
+    border-right: 1px solid var(--border);
+    padding-right: 0.5rem;
+  }
+
+  /* ---- CREATE PASTE ---- */
+  .create-layout {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .create-title {
+    font-family: var(--sans);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text2);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .form-label {
+    font-size: 0.65rem;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 0.5rem 0.7rem;
+    outline: none;
+    transition: border-color 0.2s;
+    border-radius: 0;
+    width: 100%;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--accent);
+  }
+  .form-select option { background: var(--bg); }
+
+  .form-textarea {
+    resize: vertical;
+    min-height: 340px;
+    line-height: 1.6;
+  }
+
+  .btn-primary {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 8px 24px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover {
+    background: rgba(0,255,224,0.1);
+    box-shadow: 0 0 15px rgba(0,255,224,0.15);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 8px 24px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--text2); color: var(--text); }
+
+  /* ---- AUTH MODAL ---- */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.hidden { display: none; }
+
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    width: 380px;
+    max-width: 95vw;
+    padding: 2rem;
+    position: relative;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 0.8rem;
+    right: 0.8rem;
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+  .modal-close:hover { color: var(--accent2); }
+
+  .modal-title {
+    font-family: var(--sans);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-tabs {
+    display: flex;
+    margin-bottom: 1.2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-tab {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 6px 16px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .auth-error {
+    background: rgba(255,46,108,0.1);
+    border: 1px solid rgba(255,46,108,0.3);
+    color: var(--accent2);
+    font-size: 0.7rem;
+    padding: 0.5rem 0.8rem;
+    margin-bottom: 0.8rem;
+    display: none;
+  }
+  .auth-error.show { display: block; }
+
+  .auth-success {
+    background: rgba(0,255,136,0.1);
+    border: 1px solid rgba(0,255,136,0.3);
+    color: var(--green);
+    font-size: 0.7rem;
+    padding: 0.5rem 0.8rem;
+    margin-bottom: 0.8rem;
+    display: none;
+  }
+  .auth-success.show { display: block; }
+
+  /* ---- USER PROFILE ---- */
+  .profile-layout {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .profile-header {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    margin-bottom: 1px;
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  .profile-avatar {
+    width: 64px;
+    height: 64px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--accent);
+    flex-shrink: 0;
+    font-family: var(--sans);
+    font-weight: 700;
+  }
+
+  .profile-info h2 {
+    font-family: var(--sans);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+  }
+
+  .profile-info .profile-handle {
+    font-size: 0.75rem;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .profile-stats {
+    display: flex;
+    gap: 2rem;
+    margin-top: 0.5rem;
+  }
+
+  .profile-stat {
+    font-size: 0.7rem;
+    color: var(--text3);
+  }
+  .profile-stat span { color: var(--text); display: block; font-size: 0.9rem; font-weight: 600; }
+
+  /* ---- TOAST ---- */
+  #toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-size: 0.75rem;
+    padding: 0.7rem 1.2rem;
+    z-index: 9998;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.25s;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.success { border-color: var(--green); color: var(--green); }
+  #toast.error { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ---- EMPTY STATE ---- */
+  .empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--text3);
+    font-size: 0.75rem;
+  }
+  .empty-state .empty-icon { font-size: 2rem; margin-bottom: 0.8rem; opacity: 0.4; }
+
+  /* ---- LOADING ---- */
+  .loading {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text3);
+    font-size: 0.75rem;
+  }
+  .loading::after {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- URL BAR ---- */
+  .url-bar {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    padding: 4px 2rem;
+    font-size: 0.65rem;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+  .url-bar span { color: var(--accent); }
+
+  /* ---- SCROLLBAR ---- */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  /* ---- RESPONSIVE ---- */
+  @media (max-width: 768px) {
+    .home-layout { grid-template-columns: 1fr; }
+    .sidebar-left, .sidebar-right { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+  <span class="nav-logo" onclick="navigate('home')">Kitty<span>Bin</span></span>
+  <div class="nav-links">
+    <a onclick="navigate('home')">Home</a>
+    <a onclick="navigate('create')">+ New Paste</a>
+    <span id="nav-user-area">
+      <button class="nav-btn" onclick="openAuth('login')">Login</button>
+      <button class="nav-btn" onclick="openAuth('register')">Register</button>
+    </span>
+  </div>
+</nav>
+
+<!-- URL BAR -->
+<div class="url-bar" id="url-bar">kittybin.lat/<span id="url-path">home</span></div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- HOME VIEW -->
+  <div class="view active" id="view-home">
+    <div class="home-layout">
+      <aside class="sidebar-left">
+        <div class="sidebar-section">
+          <div class="sidebar-title">Browse</div>
+          <a class="sidebar-link active" onclick="loadFeed('recent')">Recent Pastes</a>
+          <a class="sidebar-link" onclick="loadFeed('public')">Public</a>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-title">Account</div>
+          <a class="sidebar-link" id="sb-my-pastes" onclick="navigate('my-pastes')" style="display:none">My Pastes</a>
+          <a class="sidebar-link" id="sb-profile" onclick="navigateProfile()" style="display:none">My Profile</a>
+          <a class="sidebar-link" onclick="navigate('create')">New Paste</a>
+        </div>
+      </aside>
+
+      <main class="main-feed">
+        <div class="feed-header">
+          <span class="feed-title" id="feed-title">Recent Pastes</span>
+        </div>
+        <div id="paste-feed"><div class="loading">Loading pastes</div></div>
+      </main>
+
+      <aside class="sidebar-right">
+        <div class="sidebar-title">Stats</div>
+        <div class="stats-box">
+          <div class="stat-row"><span class="stat-label">Total Pastes</span><span class="stat-value" id="stat-total">-</span></div>
+          <div class="stat-row"><span class="stat-label">Users</span><span class="stat-value" id="stat-users">-</span></div>
+          <div class="stat-row"><span class="stat-label">Today</span><span class="stat-value" id="stat-today">-</span></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- CREATE VIEW -->
+  <div class="view" id="view-create">
+    <div class="create-layout">
+      <div class="create-title">New Paste</div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label class="form-label">Title</label>
+          <input class="form-input" id="paste-title" type="text" placeholder="Untitled Paste" maxlength="120">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Visibility</label>
+          <select class="form-select" id="paste-visibility">
+            <option value="public">Public</option>
+            <option value="unlisted">Unlisted</option>
+            <option value="private">Private</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Syntax</label>
+          <select class="form-select" id="paste-syntax">
+            <option value="none">Plain Text</option>
+            <option value="bash">Bash</option>
+            <option value="python">Python</option>
+            <option value="javascript">JavaScript</option>
+            <option value="html">HTML</option>
+            <option value="css">CSS</option>
+            <option value="sql">SQL</option>
+            <option value="json">JSON</option>
+            <option value="markdown">Markdown</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:1rem">
+        <label class="form-label">Content</label>
+        <textarea class="form-textarea" id="paste-content" placeholder="Paste your content here..."></textarea>
+      </div>
+      <div style="display:flex;gap:0.8rem;align-items:center">
+        <button class="btn-primary" onclick="submitPaste()">Submit Paste</button>
+        <button class="btn-secondary" onclick="navigate('home')">Cancel</button>
+        <span id="create-error" style="font-size:0.7rem;color:var(--accent2);display:none"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASTE VIEW -->
+  <div class="view" id="view-paste">
+    <div class="paste-view">
+      <div class="paste-header" id="paste-detail-header">
+        <div class="paste-h-title" id="pd-title">Loading...</div>
+        <div class="paste-h-meta" id="pd-meta"></div>
+      </div>
+      <div class="paste-toolbar">
+        <button class="tb-btn" onclick="copyPaste()">Copy Raw</button>
+        <button class="tb-btn" onclick="rawPaste()">Raw</button>
+        <button class="tb-btn danger" id="tb-delete" onclick="deletePaste()" style="display:none">Delete</button>
+      </div>
+      <div class="paste-content-box">
+        <pre id="paste-detail-content"><div class="loading">Loading</div></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE VIEW -->
+  <div class="view" id="view-profile">
+    <div class="profile-layout">
+      <div class="profile-header">
+        <div class="profile-avatar" id="profile-avatar">?</div>
+        <div class="profile-info">
+          <h2 id="profile-username">Loading...</h2>
+          <div class="profile-handle" id="profile-handle"></div>
+          <div class="profile-stats">
+            <div class="profile-stat"><span id="profile-paste-count">0</span>Pastes</div>
+            <div class="profile-stat"><span id="profile-join-date">-</span>Joined</div>
+          </div>
+        </div>
+      </div>
+      <div id="profile-pastes-feed"><div class="loading">Loading pastes</div></div>
+    </div>
+  </div>
+
+  <!-- MY PASTES VIEW -->
+  <div class="view" id="view-my-pastes">
+    <div class="create-layout">
+      <div class="create-title">My Pastes</div>
+      <div id="my-pastes-feed"><div class="loading">Loading</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay hidden" id="auth-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAuth()">✕</button>
+    <div class="modal-title">KittyBin</div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="tab-login" onclick="switchTab('login')">Login</button>
+      <button class="modal-tab" id="tab-register" onclick="switchTab('register')">Register</button>
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+    <div id="auth-success" class="auth-success"></div>
+
+    <!-- Login form -->
+    <div id="form-login">
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="login-email" type="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group" style="margin-bottom:1.2rem">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="login-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn-primary" style="width:100%" onclick="doLogin()">Login</button>
+    </div>
+
+    <!-- Register form -->
+    <div id="form-register" style="display:none">
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="reg-username" type="text" placeholder="cooluser123" maxlength="30">
+      </div>
+      <div class="form-group" style="margin-bottom:0.8rem">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="reg-email" type="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group" style="margin-bottom:1.2rem">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="reg-pass" type="password" placeholder="min 6 chars" onkeydown="if(event.key==='Enter')doRegister()">
+      </div>
+      <button class="btn-primary" style="width:100%" onclick="doRegister()">Create Account</button>
+      <div style="font-size:0.65rem;color:var(--text3);margin-top:0.8rem">
+        Your profile will be at: kittybin.lat/<span id="username-preview" style="color:var(--accent)">username</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ---- SUPABASE INIT ----
+const { createClient } = supabase;
+const sb = createClient(
+  'https://wuyzhbwupulxucstkylz.supabase.co',
+  'sb_publishable_1WCrw4qXjTvfRB_XTTtxnQ_ZDWZEK3U'
+);
+
+let currentUser = null;
+let currentPasteId = null;
+let currentProfileUser = null;
+
+// ---- INIT ----
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    await loadUserProfile();
+  }
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      currentUser = session.user;
+      await loadUserProfile();
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      updateNavForUser(null);
+    }
+  });
+
+  // Route based on URL hash
+  handleRoute();
+  window.addEventListener('hashchange', handleRoute);
+
+  loadStats();
+}
+
+function handleRoute() {
+  const hash = window.location.hash.slice(1) || 'home';
+  const parts = hash.split('/');
+
+  if (parts[0] === 'paste' && parts[1]) {
+    showPaste(parts[1]);
+  } else if (parts[0] === 'user' && parts[1]) {
+    showProfile(parts[1]);
+  } else if (parts[0] === 'create') {
+    navigate('create');
+  } else if (parts[0] === 'my-pastes') {
+    navigate('my-pastes');
+  } else {
+    navigate('home');
+  }
+}
+
+// ---- USER PROFILE LOAD ----
+async function loadUserProfile() {
+  if (!currentUser) return;
+  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentUser.profile = data;
+  updateNavForUser(data);
+}
+
+function updateNavForUser(profile) {
+  const area = document.getElementById('nav-user-area');
+  const sbMyPastes = document.getElementById('sb-my-pastes');
+  const sbProfile = document.getElementById('sb-profile');
+
+  if (profile) {
+    area.innerHTML = `
+      <a class="nav-links" style="color:var(--accent);font-size:0.75rem;padding:6px 10px;cursor:pointer" onclick="showProfile('${profile.username}')">@${profile.username}</a>
+      <button class="nav-btn nav-btn-danger" onclick="doLogout()">Logout</button>
+    `;
+    sbMyPastes.style.display = 'block';
+    sbProfile.style.display = 'block';
+  } else {
+    area.innerHTML = `
+      <button class="nav-btn" onclick="openAuth('login')">Login</button>
+      <button class="nav-btn" onclick="openAuth('register')">Register</button>
+    `;
+    sbMyPastes.style.display = 'none';
+    sbProfile.style.display = 'none';
+  }
+}
+
+// ---- NAVIGATION ----
+function navigate(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const el = document.getElementById('view-' + view);
+  if (el) el.classList.add('active');
+
+  const pathMap = {
+    'home': 'home',
+    'create': 'new',
+    'my-pastes': 'my-pastes',
+  };
+  setUrlBar(pathMap[view] || view);
+
+  if (view === 'home') { loadFeed('recent'); window.location.hash = 'home'; }
+  if (view === 'create') { window.location.hash = 'create'; }
+  if (view === 'my-pastes') { loadMyPastes(); window.location.hash = 'my-pastes'; }
+}
+
+function setUrlBar(path) {
+  document.getElementById('url-path').textContent = path;
+}
+
+function navigateProfile() {
+  if (currentUser && currentUser.profile) {
+    showProfile(currentUser.profile.username);
+  }
+}
+
+// ---- FEED ----
+async function loadFeed(type) {
+  document.getElementById('feed-title').textContent = type === 'recent' ? 'Recent Pastes' : 'Public Pastes';
+  document.getElementById('paste-feed').innerHTML = '<div class="loading">Loading pastes</div>';
+
+  const { data, error } = await sb
+    .from('pastes')
+    .select('id, title, visibility, syntax, created_at, author_username')
+    .eq('visibility', 'public')
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error || !data || data.length === 0) {
+    document.getElementById('paste-feed').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>No pastes yet. Be the first!</div>';
+    return;
+  }
+
+  document.getElementById('paste-feed').innerHTML = data.map(p => renderPasteCard(p)).join('');
+}
+
+function renderPasteCard(p) {
+  const tag = `<span class="paste-tag tag-${p.visibility}">${p.visibility}</span>`;
+  const date = timeAgo(p.created_at);
+  const author = p.author_username
+    ? `<a onclick="showProfile('${p.author_username}');event.stopPropagation()">@${p.author_username}</a>`
+    : '<span style="color:var(--text3)">anonymous</span>';
+
+  return `
+    <div class="paste-card" onclick="showPaste('${p.id}')">
+      <div>
+        <div class="paste-card-title">${escHtml(p.title || 'Untitled')}</div>
+        <div class="paste-card-meta">${author} &nbsp;·&nbsp; ${p.syntax !== 'none' ? p.syntax : 'text'} &nbsp;·&nbsp; ${tag}</div>
+      </div>
+      <div class="paste-card-right">${date}</div>
+    </div>
+  `;
+}
+
+// ---- STATS ----
+async function loadStats() {
+  const { count: total } = await sb.from('pastes').select('*', { count: 'exact', head: true }).eq('visibility', 'public');
+  const { count: users } = await sb.from('profiles').select('*', { count: 'exact', head: true });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const { count: todayCount } = await sb.from('pastes')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', today.toISOString());
+
+  document.getElementById('stat-total').textContent = total || 0;
+  document.getElementById('stat-users').textContent = users || 0;
+  document.getElementById('stat-today').textContent = todayCount || 0;
+}
+
+// ---- SHOW PASTE ----
+async function showPaste(id) {
+  currentPasteId = id;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-paste').classList.add('active');
+  document.getElementById('pd-title').textContent = 'Loading...';
+  document.getElementById('pd-meta').innerHTML = '';
+  document.getElementById('paste-detail-content').innerHTML = '<div class="loading">Loading</div>';
+  document.getElementById('tb-delete').style.display = 'none';
+
+  window.location.hash = 'paste/' + id;
+  setUrlBar('paste/' + id.substring(0,8) + '...');
+
+  const { data, error } = await sb.from('pastes').select('*').eq('id', id).single();
+  if (error || !data) {
+    document.getElementById('pd-title').textContent = 'Paste not found';
+    document.getElementById('paste-detail-content').innerHTML = '<div class="empty-state">This paste does not exist or has been removed.</div>';
+    return;
+  }
+
+  // Check private
+  if (data.visibility === 'private' && (!currentUser || currentUser.id !== data.user_id)) {
+    document.getElementById('pd-title').textContent = 'Private Paste';
+    document.getElementById('paste-detail-content').innerHTML = '<div class="empty-state">This paste is private.</div>';
+    return;
+  }
+
+  document.getElementById('pd-title').textContent = data.title || 'Untitled';
+
+  const visTag = `<span class="paste-tag tag-${data.visibility}">${data.visibility}</span>`;
+  const authorLink = data.author_username
+    ? `<a onclick="showProfile('${data.author_username}')">@${data.author_username}</a>`
+    : 'anonymous';
+
+  document.getElementById('pd-meta').innerHTML = `
+    <span>By ${authorLink}</span>
+    <span>${timeAgo(data.created_at)}</span>
+    <span>${data.syntax !== 'none' ? data.syntax : 'text'}</span>
+    <span>${visTag}</span>
+    <span style="color:var(--text3)">${formatDate(data.created_at)}</span>
+  `;
+
+  // Show delete if owner
+  if (currentUser && currentUser.id === data.user_id) {
+    document.getElementById('tb-delete').style.display = 'inline-block';
+  }
+
+  // Render with line numbers
+  const lines = (data.content || '').split('\n');
+  const linesHtml = lines.map(l => `<span class="paste-line">${escHtml(l) || ' '}</span>`).join('');
+  document.getElementById('paste-detail-content').innerHTML = linesHtml;
+  window._currentPasteContent = data.content;
+}
+
+function copyPaste() {
+  if (window._currentPasteContent) {
+    navigator.clipboard.writeText(window._currentPasteContent);
+    showToast('Copied to clipboard', 'success');
+  }
+}
+
+function rawPaste() {
+  if (window._currentPasteContent) {
+    const blob = new Blob([window._currentPasteContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  }
+}
+
+async function deletePaste() {
+  if (!currentUser || !currentPasteId) return;
+  if (!confirm('Delete this paste?')) return;
+
+  const { error } = await sb.from('pastes').delete().eq('id', currentPasteId).eq('user_id', currentUser.id);
+  if (error) { showToast('Failed to delete', 'error'); return; }
+
+  showToast('Paste deleted', 'success');
+  navigate('home');
+}
+
+// ---- CREATE PASTE ----
+async function submitPaste() {
+  const title = document.getElementById('paste-title').value.trim() || 'Untitled';
+  const content = document.getElementById('paste-content').value;
+  const visibility = document.getElementById('paste-visibility').value;
+  const syntax = document.getElementById('paste-syntax').value;
+  const errEl = document.getElementById('create-error');
+
+  if (!content.trim()) {
+    errEl.textContent = 'Content cannot be empty.';
+    errEl.style.display = 'inline';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  const payload = {
+    title,
+    content,
+    visibility,
+    syntax,
+    user_id: currentUser ? currentUser.id : null,
+    author_username: currentUser?.profile?.username || null,
+  };
+
+  const { data, error } = await sb.from('pastes').insert(payload).select().single();
+  if (error) {
+    errEl.textContent = 'Error creating paste: ' + error.message;
+    errEl.style.display = 'inline';
+    return;
+  }
+
+  // Clear form
+  document.getElementById('paste-title').value = '';
+  document.getElementById('paste-content').value = '';
+
+  showToast('Paste created!', 'success');
+  showPaste(data.id);
+}
+
+// ---- PROFILE ----
+async function showProfile(username) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-profile').classList.add('active');
+  window.location.hash = 'user/' + username;
+  setUrlBar(username);
+
+  document.getElementById('profile-username').textContent = 'Loading...';
+  document.getElementById('profile-handle').textContent = '';
+
+  const { data: profile, error } = await sb.from('profiles').select('*').eq('username', username).single();
+  if (error || !profile) {
+    document.getElementById('profile-username').textContent = 'User not found';
+    document.getElementById('profile-pastes-feed').innerHTML = '<div class="empty-state">This user does not exist.</div>';
+    return;
+  }
+
+  document.getElementById('profile-avatar').textContent = username[0].toUpperCase();
+  document.getElementById('profile-username').textContent = profile.display_name || profile.username;
+  document.getElementById('profile-handle').textContent = 'kittybin.lat/' + profile.username;
+  document.getElementById('profile-join-date').textContent = formatDate(profile.created_at, true);
+
+  // Load pastes
+  let query = sb.from('pastes')
+    .select('id, title, visibility, syntax, created_at')
+    .eq('author_username', username)
+    .order('created_at', { ascending: false });
+
+  // Only show public+unlisted unless it's you
+  if (!currentUser || currentUser.profile?.username !== username) {
+    query = query.in('visibility', ['public', 'unlisted']);
+  }
+
+  const { data: pastes } = await query.limit(100);
+  document.getElementById('profile-paste-count').textContent = pastes?.length || 0;
+
+  if (!pastes || pastes.length === 0) {
+    document.getElementById('profile-pastes-feed').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>No public pastes.</div>';
+    return;
+  }
+
+  document.getElementById('profile-pastes-feed').innerHTML = pastes.map(p => {
+    const tag = `<span class="paste-tag tag-${p.visibility}">${p.visibility}</span>`;
+    return `
+      <div class="paste-card" onclick="showPaste('${p.id}')">
+        <div>
+          <div class="paste-card-title">${escHtml(p.title || 'Untitled')}</div>
+          <div class="paste-card-meta">${p.syntax !== 'none' ? p.syntax : 'text'} &nbsp;·&nbsp; ${tag}</div>
+        </div>
+        <div class="paste-card-right">${timeAgo(p.created_at)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ---- MY PASTES ----
+async function loadMyPastes() {
+  if (!currentUser) {
+    document.getElementById('my-pastes-feed').innerHTML = '<div class="empty-state">You must be logged in.</div>';
+    return;
+  }
+
+  const { data } = await sb.from('pastes')
+    .select('id, title, visibility, syntax, created_at')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  if (!data || data.length === 0) {
+    document.getElementById('my-pastes-feed').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>You have no pastes yet.</div>';
+    return;
+  }
+
+  document.getElementById('my-pastes-feed').innerHTML = data.map(p => {
+    const tag = `<span class="paste-tag tag-${p.visibility}">${p.visibility}</span>`;
+    return `
+      <div class="paste-card" onclick="showPaste('${p.id}')">
+        <div>
+          <div class="paste-card-title">${escHtml(p.title || 'Untitled')}</div>
+          <div class="paste-card-meta">${p.syntax !== 'none' ? p.syntax : 'text'} &nbsp;·&nbsp; ${tag}</div>
+        </div>
+        <div class="paste-card-right">${timeAgo(p.created_at)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ---- AUTH ----
+function openAuth(tab) {
+  document.getElementById('auth-modal').classList.remove('hidden');
+  switchTab(tab);
+}
+
+function closeAuth() {
+  document.getElementById('auth-modal').classList.add('hidden');
+  document.getElementById('auth-error').classList.remove('show');
+  document.getElementById('auth-success').classList.remove('show');
+}
+
+function switchTab(tab) {
+  document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('form-register').style.display = tab === 'register' ? 'block' : 'none';
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+  document.getElementById('auth-error').classList.remove('show');
+  document.getElementById('auth-success').classList.remove('show');
+}
+
+document.getElementById('reg-username').addEventListener('input', function() {
+  document.getElementById('username-preview').textContent = this.value || 'username';
+});
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('auth-error');
+
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.classList.add('show');
+    return;
+  }
+
+  closeAuth();
+  showToast('Welcome back!', 'success');
+  loadFeed('recent');
+  loadStats();
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-username').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+  const errEl = document.getElementById('auth-error');
+  const successEl = document.getElementById('auth-success');
+
+  if (!username || username.length < 3) {
+    errEl.textContent = 'Username must be at least 3 characters (letters, numbers, _, -)';
+    errEl.classList.add('show');
+    return;
+  }
+
+  // Check username taken
+  const { data: existing } = await sb.from('profiles').select('id').eq('username', username).single();
+  if (existing) {
+    errEl.textContent = 'Username is already taken.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password: pass,
+    options: { data: { username } }
+  });
+
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.classList.add('show');
+    return;
+  }
+
+  // Create profile
+  if (data.user) {
+    await sb.from('profiles').upsert({
+      id: data.user.id,
+      username,
+      display_name: username,
+      email,
+    });
+  }
+
+  successEl.textContent = 'Account created! Check your email to confirm, or login now.';
+  successEl.classList.add('show');
+  errEl.classList.remove('show');
+
+  setTimeout(() => {
+    switchTab('login');
+    document.getElementById('login-email').value = email;
+  }, 2000);
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  showToast('Logged out', 'success');
+  navigate('home');
+}
+
+// ---- UTILS ----
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  const d = Math.floor(h / 24);
+  if (d < 30) return d + 'd ago';
+  return formatDate(iso, true);
+}
+
+function formatDate(iso, short) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (short) return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+let toastTimer;
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + (type || '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, 3000);
+}
+
+// Close modal on overlay click
+document.getElementById('auth-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeAuth();
+});
+
+// ---- START ----
+init();
+</script>
+</body>
+</html>
+
